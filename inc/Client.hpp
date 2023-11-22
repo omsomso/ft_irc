@@ -15,7 +15,6 @@ class Client {
 	private:
 	std::string _nickName;
 	std::string _hostName;
-	std::string _serverName;
 	std::string _realName;
 	int			_id;
 
