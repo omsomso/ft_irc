@@ -1,4 +1,4 @@
-NAME		:= ft_irc
+NAME		:= ircserv
 CC			:= c++
 FLAGS		:= -Wall -Wextra -Werror #-fsanitize=address -g3
 RM			:= rm -rf
@@ -40,7 +40,8 @@ $(NAME): 	$(OBJ)
 #			@echo "Compiled with bonus files"
 #			@./miniRT scenes/bonus.rt
 
-# run:		re
+run:		re
+			./ircserv
 
 clean:
 			@$(RM) $(OBJDIR)

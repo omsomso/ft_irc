@@ -384,6 +384,21 @@ The server's listening port (6667 for an IRC server) is what's known and consist
 
 So, in the context of an IRC server, the server would be bound to a specific port (6667), but the client connections accepted by the server would be associated with whatever ephemeral port the client's operating system assigned for that connection.
 
+# More on listen()
+
+The `listen()` function marks the socket as a passive socket, meaning it will be used to accept incoming connection requests using `accept()`.
+
+```cpp
+// Listen for incoming connections
+if (listen(_serverSocket, SOMAXCONN) < 0) {
+    return 1;
+}
+```
+
+In this code, `SOMAXCONN` is a special constant that tells `listen()` to allow a maximum number of pending connections in the queue. If `listen()` fails, it returns -1 and sets `errno` to indicate the error.
+
+After adding this call to `listen()`, your server should be able to accept incoming connections on localhost:6667.
+
 # Struct sockaddr & sockaddr_in
 
 The struct sockaddr is a general-purpose data structure used in the socket API for specifying network addresses. It's used in various socket functions, including bind(), connect(), accept(), and others.
@@ -459,6 +474,25 @@ int main() {
 ```
 
 Remember that when using non-blocking sockets, you need to handle the fact that operations may not complete immediately. You may need to use techniques such as polling or asynchronous I/O to check when a socket is ready for reading or writing.
+
+Yes, once you set a socket to non-blocking mode using `fcntl()`, it will remain non-blocking until you explicitly change it back to blocking mode or until the socket is closed. This setting is associated with the file descriptor for the socket, so it persists across all system calls that use the file descriptor, and it's not affected by other processes that might also have a file descriptor for the same socket.
+
+Here's how you can use `fcntl()` to set a socket to non-blocking mode:
+
+```cpp
+int flags = fcntl(clientSocket, F_GETFL, 0);
+if (flags == -1) {
+    // Handle error
+}
+
+flags |= O_NONBLOCK;
+
+if (fcntl(clientSocket, F_SETFL, flags) == -1) {
+    // Handle error
+}
+```
+
+In this code, `fcntl(clientSocket, F_GETFL, 0)` gets the current file status flags for `clientSocket`. The `O_NONBLOCK` flag is then added to `flags` using the bitwise OR operator. Finally, `fcntl(clientSocket, F_SETFL, flags)` sets the new file status flags for `clientSocket`. After this code runs, `clientSocket` will be in non-blocking mode.
 
 # Reading from client socket
 
@@ -543,6 +577,79 @@ This allows your server to efficiently handle multiple clients concurrently, rea
       8. Send the response to the client
 ```
 
+# More on accept()
+
+The `accept()` function is used to accept an incoming connection on a listening socket. Here's how you can use it:
+
+```cpp
+int clientSocket = accept(_serverSocket, nullptr, nullptr);
+if (clientSocket == -1) {
+    // Handle error
+}
+```
+
+In this code, `_serverSocket` is the listening socket that you've set up to accept new connections.
+
+If `accept()` is successful, it returns a new socket file descriptor for the accepted connection. This new socket is distinct from the listening socket, and it's connected to the client. You can use this new socket to send and receive data with the client.
+
+If `accept()` fails, it returns -1 and sets `errno` to indicate the error. You should check the return value of `accept()` and handle any errors that occur.
+
+The second and third parameters of the `accept()` function are used to get information about the client that is connecting.
+
+- The second parameter, `struct sockaddr *addr`, is a pointer to a `struct sockaddr` structure. This structure will be filled with the client's address information when `accept()` returns. You can pass `nullptr` if you're not interested in the client's address.
+
+- The third parameter, `socklen_t *addrlen`, is a value-result argument. Before you call `accept()`, you should set `*addrlen` to the size of the `struct sockaddr` structure that `addr` points to. When `accept()` returns, `*addrlen` will contain the actual size of the address stored in `addr`. You can pass `nullptr` if you're not interested in the client's address.
+
+Here's an example of how you might use these parameters:
+
+```cpp
+struct sockaddr_in clientAddr;
+socklen_t clientAddrLen = sizeof(clientAddr);
+int clientSocket = accept(_serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
+if (clientSocket == -1) {
+    // Handle error
+}
+```
+
+In this code, `clientAddr` is a `struct sockaddr_in` that will hold the client's address, and `clientAddrLen` is set to the size of `clientAddr`. After `accept()` returns, you can use `clientAddr` and `clientAddrLen` to get information about the client's address.
+
+# More on recv()
+
+The `recv()` function is used to receive data from a socket, whether it's a connected TCP socket or an unconnected UDP socket. The function signature is as follows:
+
+```c
+ssize_t recv(int sockfd, void *buf, size_t len, int flags);
+```
+
+Here's what each parameter means:
+
+- `sockfd`: This is the file descriptor of the socket you want to receive data from.
+- `buf`: This is a pointer to the buffer where the received data will be stored.
+- `len`: This is the length of the buffer, which tells `recv()` the maximum amount of data to receive.
+- `flags`: This is an optional parameter that you can use to change the behavior of `recv()`. For example, you can set `flags` to `MSG_DONTWAIT` to make `recv()` non-blocking.
+
+The `recv()` function returns the number of bytes received, or -1 if an error occurred. If the peer has performed an orderly shutdown, `recv()` will return 0.
+
+In your code, you'll want to use `recv()` in your `handleClient()` function to receive data from the client. Here's an example of how you might do it:
+
+```cpp
+char buffer[1024];
+ssize_t bytesReceived = recv(_fds[idx].fd, buffer, sizeof(buffer), 0);
+if (bytesReceived > 0) {
+    // Null-terminate the received data
+    buffer[bytesReceived] = '\0';
+    std::cout << "Client " << idx << " says: " << buffer << std::endl;
+} else if (bytesReceived == 0) {
+    // The client has closed the connection
+    std::cout << "Client " << idx << " has closed the connection" << std::endl;
+} else {
+    // An error occurred
+    std::cerr << "Error receiving from client " << idx << std::endl;
+}
+```
+
+This code receives up to 1023 bytes of data from the client, null-terminates the received data, and then prints it. If `recv()` returns 0, it means the client has closed the connection. If `recv()` returns -1, it means an error occurred.
+
 # Netcat (nc)
 
 The `nc` command, which stands for "netcat," is a versatile networking utility used for reading from and writing to network connections using TCP or UDP protocols. It can be used to create connections to different network services, transfer files, or perform other networking tasks.
@@ -586,3 +693,48 @@ Here are a few examples:
     ```
 
 Please note that the `nc` command and its capabilities may vary slightly between different operating systems. It's a powerful tool, and caution should be exercised, especially when using it on public networks or the internet. Always refer to the manual (`man nc` on Unix-like systems) for detailed information and options available on your specific system.
+
+# Joining an IRC server
+
+In the IRC protocol, the nickname is a required piece of information when a client connects to an IRC server. The nickname is used to uniquely identify each user on the network. When connecting to an IRC server, a client is typically required to send a NICK message to set their nickname before they can join channels or interact with other users.
+
+The format of the NICK message is as follows:
+
+```
+NICK <nickname>
+```
+
+In summary, providing a nickname is a fundamental part of the IRC connection process, and it is required for a client to interact with the IRC server and the rest of the network.
+
+Yes, in addition to providing a nickname, there are a few other pieces of information that a client typically needs to provide when connecting to an IRC server. The two main messages sent during the connection process are NICK (for setting the nickname) and USER.
+
+1. **USER message:**
+   - The USER message is used to specify the username, the client's hostname (or IP address), the servername (often a wildcard "*"), and the real name of the user. The format is as follows:
+     ```
+     USER <username> <hostname> <servername> :<realname>
+     ```
+     - `<username>`: The username of the connecting user.
+     - `<hostname>`: The hostname or IP address of the connecting user.
+     - `<servername>`: The servername (often a wildcard "*").
+     - `<realname>`: The real name of the connecting user.
+
+   Example:
+     ```
+     USER guest 0 0 :John Doe
+     ```
+
+2. **JOIN message (optional at connection time):**
+   - The JOIN message is used to join a specific channel upon connection. While it's not required at the initial connection, it is a common practice for users to join channels shortly after connecting to an IRC server. The format is as follows:
+     ```
+     JOIN <channel>
+     ```
+     - `<channel>`: The name of the channel to join.
+
+   Example:
+     ```
+     JOIN #example_channel
+     ```
+
+These messages help the IRC server identify and register the user on the network. The server may respond with various numeric codes to indicate the status of the connection and whether the requested actions (such as setting the nickname and joining channels) were successful.
+
+It's important to note that specific IRC servers or networks may have additional or slightly different requirements, so it's always a good idea to refer to the documentation or specific guidelines provided by the IRC server or network you are connecting to.
