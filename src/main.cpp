@@ -11,7 +11,8 @@
 int main() {
 	// add signals for graceful shutdown
 	Irc irc;
-	irc.setupServer();
+	if (irc.setupServer())
+		return 0;
 	irc.monitor();
 	return 0;
 }

@@ -8,6 +8,10 @@
 #include <poll.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+#include <map>
+
+#define NICK_REQUEST "Provide a nickname with the NICK command (NICK <nickname>)"
+#define USER_REQUEST "Provide user info with the USER command (USER <username> <hostname> <servername> :<realname>"
 
 #include "../inc/Client.hpp"
 
@@ -17,15 +21,17 @@ class Irc {
 	std::string _serverName;
 	struct sockaddr* _serverAddress;
 	std::vector<pollfd> _fds;
-	std::vector<Client> _clients;
+	std::map<int, Client> _clients;
 
 	public:
 	int setupServer();
 	int monitor();
 	int addClient();
-	int handleClient(size_t idx);
-	int handleClientCmd(size_t idx, std::string input, Client client);
-	Client initClient(size_t idx);
+	int handleClient(int fd);
+	int handleClientCmd(size_t idx, std::string input, Client& client);
+	int printWelcome(Client& newClient);
+	int initNick(Client& newClient);
+	int initUser(Client& newClient);
 };
 
 #endif

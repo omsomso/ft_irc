@@ -16,18 +16,23 @@ class Client {
 	std::string _nickName;
 	std::string _hostName;
 	std::string _realName;
-	int			_id;
+	int			_fd;
+	int			_setupStatus;
 
 	public:
+	Client();
 	std::string getNickName();
 	std::string getHostName();
 	std::string getRealName();
-	int			getId();
+	int			getFd();
+	int			getSetupStatus();
 
 	void		setNickName(std::string nickName);
 	void		setHostName(std::string hostName);
 	void		setRealName(std::string realName);
-	void		setId(int id);
+	void		setFd(int fd);
+	void		setSetupStatus(int status);
+
 
 };
 

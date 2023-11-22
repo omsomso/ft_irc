@@ -1,5 +1,7 @@
 #include "../inc/Client.hpp"
-	
+
+Client::Client() : _setupStatus(2) {};
+
 std::string Client::getNickName() {
 	return this->_nickName;
 }
@@ -12,8 +14,12 @@ std::string Client::getRealName() {
 	return this->_realName;
 }
 
-int			Client::getId() {
-	return this->_id;
+int Client::getFd() {
+	return this->_fd;
+}
+
+int Client::getSetupStatus() {
+	return this->_setupStatus;
 }
 
 void Client::setNickName(std::string nickName) {
@@ -28,6 +34,10 @@ void Client::setRealName(std::string realName) {
 	this->_realName = realName;
 }
 
-void Client::setId(int id) {
-		this->_id = id;
+void Client::setFd(int fd) {
+		this->_fd = fd;
+}
+
+void Client::setSetupStatus(int status) {
+	this->_setupStatus = status;
 }

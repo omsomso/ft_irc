@@ -1,21 +1,20 @@
 #include "../inc/Irc.hpp"
 
 int Irc::setupServer() {
-	_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-	// Set up server socket for clients to connect to on localhost:6667
+	_serverName = "super serveur";
 
-	_serverName = "super seveur";
+	// Set up server socket for clients to connect to on localhost:6667
+	_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in addressSetup;
 	addressSetup.sin_family = AF_INET;
 	addressSetup.sin_port = htons(6667);
 	addressSetup.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	// cast struct sockaddr_in into struct sockaddr*
-	// _serverAddress = reinterpret_cast<struct sockaddr*>(&addressSetup);
-	(void) _serverAddress;
+	_serverAddress = (struct sockaddr*)&addressSetup;
 
 	// bind serverSocket to localhost:6667
-	if (bind(_serverSocket, (struct sockaddr*)&addressSetup, sizeof(addressSetup)) < 0) {
+	if (bind(_serverSocket, _serverAddress, (socklen_t)sizeof(struct sockaddr)) < 0) {
 		std::cerr << "Error : bind" << std::endl;
 		return 1;
 	}
@@ -25,6 +24,7 @@ int Irc::setupServer() {
 		std::cerr << "Error : listen" << std::endl;
 		return 1;
 	}
+
 	// add serverSocket to the vector of sockets monitored by poll()
 	struct pollfd serverPollfd;
 	serverPollfd.fd = _serverSocket;
@@ -50,16 +50,20 @@ int Irc::monitor() {
 		}
 
 		// for each socket
-		for (size_t i = 0; i != _fds.size(); i++) {
+		for (size_t i = 0; i < _fds.size(); i++) {
 			// if there are POLLIN events from poll
 			if (_fds[i].revents & POLLIN) {
 				// if a client tries to connect to localhost:6667 (establish first connection)
 				if (_fds[i].fd == _serverSocket) {
 					addClient();
 				}
+				else if (POLLIN && _clients[_fds[i].fd].getSetupStatus() == 2)
+					initNick(_clients[_fds[i].fd]);
+				else if (POLLIN && _clients[_fds[i].fd].getSetupStatus() == 1)
+					initUser(_clients[_fds[i].fd]);
 				// else (if an existing client sends data)
 				else {
-					handleClient(i);
+					handleClient(_fds[i].fd);
 				}
 			}
 		}
@@ -70,7 +74,9 @@ int Irc::monitor() {
 int Irc::addClient() {
 	// Accept new client connection, monitor for incoming data
 	struct pollfd clientPollfd;
-	// server socket, struct sockaddr for client info, sizeof(struct sockaddr)
+	// server socket, struct sockaddr for client info, size of struc sockaddr as socklen_t pointer)
+	struct sockaddr clientAddress;
+	// clientPollfd.fd = accept(_serverSocket, (struct sockaddr*)&clientAddress, (socklen_t*)sizeof(clientAddress));
 	clientPollfd.fd = accept(_serverSocket, nullptr, nullptr);
 	// poll for in events
 	clientPollfd.events = POLLIN;
@@ -81,55 +87,99 @@ int Irc::addClient() {
 	// Add clientSocket to monitored file descriptors
 	_fds.push_back(clientPollfd);
 
+	Client newClient;
+	newClient.setHostName(clientAddress.sa_data);
+	newClient.setFd(clientPollfd.fd);
+	_clients.insert(std::pair<int, Client>(clientPollfd.fd, newClient));
+	printWelcome(newClient);
 
-
-	std::cout << "Added client!" << std::endl;
+	// std::cout << "Added client!" << std::endl;
 	return 0;
 }
 
-int Irc::handleClientCmd(size_t idx, std::string input, Client client) {
+int Irc::initNick(Client& newClient) {
+	if (newClient.getSetupStatus() == 2) {
+		char buffer[1024];
+		std::string input;
+		// mandatory identification procedure
+		// recv() shouldn't block the whole server MSG_DONTWAIT or fcntl
+		size_t bytesReceived = recv(newClient.getFd(), buffer, sizeof(buffer), 0);
+		buffer[bytesReceived] = 0x00;
+		input = buffer;
+		if (input.substr(0, 4) != "NICK") {
+			std::cout << "Error : not a NICK command! Try again." << std::endl;
+			return 1;
+		}
+		else {
+			newClient.setNickName(input.substr(5, input.length() - 6));
+			std::cout << "Welcome " << newClient.getNickName() << "!" << std::endl;
+			std::cout << USER_REQUEST << std::endl;
+			newClient.setSetupStatus(1);
+		}
+	}
+	return 0;
+}
+
+int Irc::initUser(Client& newClient) {
+	char buffer[1024];
+	std::string input;
+
+	size_t bytesReceived = recv(newClient.getFd(), buffer, sizeof(buffer), 0);
+	buffer[bytesReceived] = 0x00;
+	input = buffer;
+	std::cout << "The user info you provided is " << input.substr(0, input.length() - 1) << std::endl;
+	std::cout << "You can now chat!" << std::endl;
+	// parse user info into newClient
+
+	newClient.setSetupStatus(0);
+	return 0;
+}
+
+int Irc::printWelcome(Client& newClient) {
+	std::cout << "Welcome to " << _serverName << "." << std::endl;
+	std::cout << NICK_REQUEST << std::endl;
+	(void) newClient;
+	return 0;
+}
+
+int Irc::handleClientCmd(size_t idx, std::string input, Client& client) {
 	(void) idx;
 	(void) input;
 	(void) client;
-	// compare input to avaliable commands except for NICK and USER
+	// compare input to avaliable commands
 	// manage these commands
 	return 0;
 }
 
-Client Irc::initClient(size_t idx) {
-	(void) idx;
-	Client currentClient;
-	std::cout << "Welcome to " << _serverName << ". Please provide a nickname using the NICK command" << std::endl;
-	// manage identification procedure...
-	// recv() shouldn't block the whole server?
-	return currentClient;
-}
-
-int Irc::handleClient(size_t idx) {
-	char buffer[1010];
-	size_t bytesReceived = recv(_fds[idx].fd, buffer, sizeof(buffer), 0);
+int Irc::handleClient(int fd) {
+	char buffer[1024];
+	size_t bytesReceived = recv(fd, buffer, sizeof(buffer), 0);
 
 	if (bytesReceived > 0) {
-		// handleClientCmd(idx, input, ...);
 		buffer[bytesReceived - 1] = 0x00;
 		std::string clientInput = buffer;
-		std::cout << "Client " << idx << " says : " << clientInput << std::endl;
+		std::cout << _clients[fd].getNickName() << ": " << clientInput << std::endl;
 	}
 
 	else if (bytesReceived == 0) {
-		std::cout << "Client " << idx << " has closed the connection" << std::endl;
+		std::cout << _clients[fd].getNickName() << " has closed the connection" << std::endl;
 
 		// close the client socket
-		close(_fds[idx].fd);
+		close(fd);
 
-		// removing the client causes a segfault ?
-		// _fds.erase(_fds.begin() + idx);
+		// remove clientPollfd from monitored sockets
+		// probably should use map<int, pollfd>
+		for (size_t i = 0; i < _fds.size(); i++) {
+			if (_fds[i].fd == fd)
+				_fds.erase(_fds.begin() + i);
+		}
+
+		// remove client from _clients
+		_clients.erase(fd);
 		return 1;
 	}
 	else {
-		std::cerr << "Error : recv() from client " << idx << std::endl;
+		std::cerr << "Error : recv() from client " << _clients[fd].getNickName() << std::endl;
 	}
-
-	// Do all the client things
 	return 0;
 }

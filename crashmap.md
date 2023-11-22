@@ -696,45 +696,28 @@ Please note that the `nc` command and its capabilities may vary slightly between
 
 # Joining an IRC server
 
-In the IRC protocol, the nickname is a required piece of information when a client connects to an IRC server. The nickname is used to uniquely identify each user on the network. When connecting to an IRC server, a client is typically required to send a NICK message to set their nickname before they can join channels or interact with other users.
+In the IRC protocol, the order in which the NICK and USER messages are sent during the connection process is important. According to the IRC specification (RFC 2812), the recommended order for sending these messages is as follows:
 
-The format of the NICK message is as follows:
+1. **NICK message:**
+   - The client sends a NICK message to set the desired nickname. This is often one of the first messages sent during the connection process.
+     ```
+     NICK <nickname>
+     ```
+   - Example:
+     ```
+     NICK user123
+     ```
 
-```
-NICK <nickname>
-```
-
-In summary, providing a nickname is a fundamental part of the IRC connection process, and it is required for a client to interact with the IRC server and the rest of the network.
-
-Yes, in addition to providing a nickname, there are a few other pieces of information that a client typically needs to provide when connecting to an IRC server. The two main messages sent during the connection process are NICK (for setting the nickname) and USER.
-
-1. **USER message:**
-   - The USER message is used to specify the username, the client's hostname (or IP address), the servername (often a wildcard "*"), and the real name of the user. The format is as follows:
+2. **USER message:**
+   - After setting the nickname, the client sends a USER message to provide additional information about the user, such as the username, hostname, servername, and real name.
      ```
      USER <username> <hostname> <servername> :<realname>
      ```
-     - `<username>`: The username of the connecting user.
-     - `<hostname>`: The hostname or IP address of the connecting user.
-     - `<servername>`: The servername (often a wildcard "*").
-     - `<realname>`: The real name of the connecting user.
-
-   Example:
+   - Example:
      ```
      USER guest 0 0 :John Doe
      ```
 
-2. **JOIN message (optional at connection time):**
-   - The JOIN message is used to join a specific channel upon connection. While it's not required at the initial connection, it is a common practice for users to join channels shortly after connecting to an IRC server. The format is as follows:
-     ```
-     JOIN <channel>
-     ```
-     - `<channel>`: The name of the channel to join.
+The order is significant because the IRC server uses the information provided in these messages to identify and register the user on the network. Once these messages are sent, the server may respond with numeric codes to indicate the status of the connection and whether the requested actions (setting the nickname and providing user information) were successful.
 
-   Example:
-     ```
-     JOIN #example_channel
-     ```
-
-These messages help the IRC server identify and register the user on the network. The server may respond with various numeric codes to indicate the status of the connection and whether the requested actions (such as setting the nickname and joining channels) were successful.
-
-It's important to note that specific IRC servers or networks may have additional or slightly different requirements, so it's always a good idea to refer to the documentation or specific guidelines provided by the IRC server or network you are connecting to.
+It's important to note that while this order is recommended, some IRC servers may be lenient and accept the messages in a different order. However, following the recommended order ensures compatibility with most IRC servers and helps establish a standard practice for clients connecting to the network.
