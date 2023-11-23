@@ -721,3 +721,55 @@ In the IRC protocol, the order in which the NICK and USER messages are sent duri
 The order is significant because the IRC server uses the information provided in these messages to identify and register the user on the network. Once these messages are sent, the server may respond with numeric codes to indicate the status of the connection and whether the requested actions (setting the nickname and providing user information) were successful.
 
 It's important to note that while this order is recommended, some IRC servers may be lenient and accept the messages in a different order. However, following the recommended order ensures compatibility with most IRC servers and helps establish a standard practice for clients connecting to the network.
+
+# Basic listing commands
+
+In IRC, clients can gather information about channels and users through the use of various IRC protocol commands. Here are some common commands for obtaining information about channels and users:
+
+1. **LIST Command**: The `/LIST` command is used to retrieve a list of channels on the server along with information about each channel, such as the number of users and the channel topic. This command provides a general overview of the channels available on the server.
+
+    Example:
+    ```
+    /LIST
+    ```
+
+2. **NAMES Command**: The `/NAMES` command is used to retrieve a list of users in a specific channel. This command provides the nicknames of users currently in the channel.
+
+    Example:
+    ```
+    /NAMES #channel
+    ```
+
+3. **WHO Command**: The `/WHO` command is used to request information about users on the server or in a specific channel. It can provide details such as user modes, user idle time, and the real name of users.
+
+    Example:
+    ```
+    /WHO #channel
+    ```
+
+When a user joins a channel, the IRC server automatically broadcasts a JOIN message to all users in the channel. This message includes information about the user who joined and the channel they joined. Clients that are already in the channel will receive this message and can update their internal state to reflect the new user.
+
+It's important to note that the availability and behavior of these commands can vary between different IRC servers. IRC server software may implement additional commands or have variations in how certain commands operate. The examples provided are based on common practices in IRC, but specific implementations may differ.
+
+If you're developing an IRC client, it's recommended to refer to the documentation of the IRC server software you're working with to ensure compatibility and to understand any server-specific extensions or features.
+
+# Connection server response
+
+When an IRC client successfully sends the USER command to the server, the server is expected to respond with a numeric reply indicating that the user registration process was successful. The numeric reply for a successful USER command is typically `001` and is accompanied by a welcome message.
+
+Here's an example of what the server response might look like:
+
+```
+:server-name 001 your-nick :Welcome to the IRC Network your-nick!user@host
+```
+
+In this example:
+
+- `:server-name` is the prefix indicating the source of the message (the IRC server).
+- `001` is the numeric reply for a successful connection and user registration.
+- `your-nick` is the nickname you provided in the USER command.
+- `Welcome to the IRC Network your-nick!user@host` is a welcome message that may include additional information.
+
+The specific format of the welcome message may vary between IRC servers. The key point is that a numeric reply of `001` generally indicates a successful registration and initiation of the IRC session.
+
+It's important to note that the IRC protocol defines a range of numeric replies, each associated with a specific meaning. Numeric replies in the `001-005` range are generally related to the connection and registration process. You can refer to the IRC RFCs (RFC 1459 and RFC 2812) for the complete list of numeric replies and their meanings.

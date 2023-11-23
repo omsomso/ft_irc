@@ -41,7 +41,7 @@ $(NAME): 	$(OBJ)
 #			@./miniRT scenes/bonus.rt
 
 run:		re
-			./ircserv
+			./ircserv 6667 supermdp
 
 clean:
 			@$(RM) $(OBJDIR)
