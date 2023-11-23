@@ -7,8 +7,10 @@
 
 1. Get limechat http://limechat.net/mac/
 2. Go to server/server proprieties
-3. Enter servername = Super-Serveur
-4. Enter password = supermdp
-5. Enter nickname
-6. Run server
-7. connect??
+3. Enter :
+	- server = localhost
+	- port = 6667 (by default)
+	- password = supermdp (by default)
+	- enter some nickname
+4. Make run server
+5. Click on server/connect
