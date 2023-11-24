@@ -1,6 +1,6 @@
 #include "../inc/Irc.hpp"
 
-Irc::Irc(int port, std::string pass, std::string serverName) : _port(port), _pass(pass), _serverName(serverName) {}
+Irc::Irc(int port, std::string const pass, std::string const serverName) : _port(port), _pass(pass), _serverName(serverName), _cmd(*this), _setup(*this) {}
 
 int Irc::setupServer() {
 	// Set up server socket for clients to connect to on localhost:6667
@@ -34,17 +34,20 @@ int Irc::setupServer() {
 	std::cout << "Server initialised" << std::endl;
 
 	Channel general("general", "whatever", 0);
-	_channels.push_back(general);
+	_channels.insert(std::pair<std::string, Channel>("general", general));
+	_chNames.push_back("general");
 	return 0;
 }
 
 int Irc::monitor() {
 	std::cout << "Waiting for incoming connections" << std::endl;
+
+	// main monitoring loop
 	while (true) {
 		// monitor the sockets vector
 		int pollResult = poll(_fds.data(), _fds.size(), -1);
 
-		// in case of error shut the whole thing down
+		// in case of poll error shut the whole thing down
 		if (pollResult == -1) {
 			std::cerr << "Error : poll" << std::endl;
 			close(_serverSocket);
@@ -53,12 +56,16 @@ int Irc::monitor() {
 
 		// for each socket
 		for (size_t i = 0; i < _fds.size(); i++) {
+
+			// find client entry by socket in _clients map
 			Client& client = _clients[_fds[i].fd];
+
 			// if there are POLLIN events from poll
 			if (_fds[i].revents & POLLIN) {
 				if (client.getSetupStatus() == 0)
 					handleClient(client);
-				setupNewClients(client, _fds[i].fd);
+				else
+					_setup.setupNewClients(client, _fds[i].fd);
 			}
 		}
 	}
@@ -66,29 +73,11 @@ int Irc::monitor() {
 	return 0;
 }
 
-void Irc::setupNewClients(Client& client, int fd) {
-	// if a client tries to connect to localhost:6667 (establish first connection)
-	if (fd == _serverSocket)
-		addClient();
-
-	// test client status : 3 = no pass, 2 = no nick, 1 = no userdata
-	// 0 = fully setup
-	else if (client.getSetupStatus() == 3)
-		testPass(client);
-	else if (client.getSetupStatus() == 2)
-		initNick(client);
-	if (client.getSetupStatus() == 1 && SKIP_ID == true) {
-		client.setSetupStatus(0);
-		printReady(client, client.getFd());
-	}
-	else if (client.getSetupStatus() == 1)
-		initUser(client);
-}
-
 int Irc::addClient() {
+	// create new client Pollfd
 	struct pollfd clientPollfd;
 
-	// accept new client connection on socket returned by accept
+	// accept new client connection on socket returned by accept()
 	clientPollfd.fd = accept(_serverSocket, nullptr, nullptr);
 
 	// monitor (poll) for in events
@@ -97,7 +86,7 @@ int Irc::addClient() {
 	// set non-blocking mode
 	fcntl(clientPollfd.fd, F_SETFL, O_NONBLOCK);
 
-	// add clientSocket to monitored file descriptors
+	// add clientPollfd to monitored file descriptors
 	_fds.push_back(clientPollfd);
 
 	// create client entry in _clients map
@@ -106,201 +95,15 @@ int Irc::addClient() {
 	_clients.insert(std::pair<int, Client>(clientPollfd.fd, newClient));
 	std::cout << "Client added with fd " << clientPollfd.fd << std::endl;
 
-	// ask client for pwd
-	sendToClient(newClient.getFd(), PASS_PROMPT);
+	// prompt client for server password
+	_setup.promptPass(newClient);
 	return 0;
 }
 
-std::string Irc::fixNlCr(char buffer[], size_t len) {
-	buffer[len] = 0x00;
-	if (buffer[len - 1] == '\n' || 0x0D)
-		buffer[len - 1] = 0x00;
-	if (buffer[len - 2] == 0x0D)
-		buffer[len - 2] = 0x00;
-	return (buffer);
-}
-
-void Irc::testPass(Client& client) {
+void Irc::disconnectClient(Client& client) {
 	int fd = client.getFd();
-	char buffer[BUFFER_SIZE];
-	std::string input;
-	
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-	if (len > 0) {
-
-		input = fixNlCr(buffer, len);
-
-		std::string cmdPass = input.substr(0, 5);
-		if (cmdPass != "PASS ") {
-			// std::string mess = "Type the password as follows : PASS <password>\n";
-			// sendToClient(fd, mess);
-			return ;
-		}
-		std::string pass = input.substr(5, input.length());
-		if (pass == _pass) {
-			client.setSetupStatus(2);
-			std::cout << "Client wtih fd " << fd << " entered correct pwd" << std::endl;
-			printWelcome(client);
-		}
-		else
-			sendToClient(fd, WRONG_PASS);
-	}
-	else if (len == 0) {
-		std::cout << UIDCLIENT_CLOSE << std::endl;
-		disconnectClient(fd);
-	}
-	else {
-		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
-		sendToClient(fd, RECV_ERR);
-	}
-}
-
-void Irc::parseNick(Client& client, int fd, std::string input) {
-	std::string cmdNick = input.substr(0, 5);
-	std::string nick = input.substr(5, input.length() - 5);
-
-	if (cmdNick != "NICK ") {
-		sendToClient(fd, NICK_ERROR);
-	}
-	
-	else {
-		client.setNickName(nick);
-		// std::cout << "Added nick " << nick << " for client with fd " << fd << std::endl;
-		if (SKIP_ID == false) {
-			std::string mess = "Welcome " + nick + "\n" + USER_REQUEST;
-			sendToClient(fd, mess);
-		}
-		client.setSetupStatus(1);
-	}
-}
-
-int Irc::initNick(Client& client) {
-	int fd = client.getFd();
-	char buffer[BUFFER_SIZE];
-	std::string input;
-	std::string cmdNick;
-	std::string nick;
-	
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-	if (len > 0) {
-		input = fixNlCr(buffer, len);
-		parseNick(client, fd, input);
-	}
-	
-	else if (len == 0) {
-		std::cout << UIDCLIENT_CLOSE << std::endl;
-		disconnectClient(fd);
-	}
-
-	else {
-		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
-		sendToClient(fd, RECV_ERR);
-	}
-	return 0;
-}
-
-void Irc::printReady(Client &client, int fd) {
-
-	std::cout << "Client joined : " << std::endl;
-	client.printClientInfo();
-
-	std::string mess = ":" + _serverName + " 001 " + client.getNickName() + " :You're all set, you can now chat :)\n";
-	sendToClient(fd, mess);
-	
-	mess = client.getNickName() + " joined the chat!\n";
-	sendToAll(mess);
-}
-
-int Irc::parseUser(Client& client, int fd, std::string input) {
-	std::string cmdUser = input.substr(0, 5);
-
-	if (cmdUser != "USER ") {
-		sendToClient(fd, USER_ERROR);
-		return 1;
-	}
-
-	input = input.substr(0, input.length() - 1);
-	std::stringstream ss(input);
-	std::string tmp;
-	std::vector<std::string> tmpVec;
-	int i = 0;
-
-	while (std::getline(ss, tmp, ' ')) {
-		i++;
-		tmpVec.push_back(tmp);
-	}
-
-	for (size_t i = 0; i < tmpVec.size(); i++)
-		std::cout << tmpVec[i] << "." << std::endl;
-	std::cout << ";" << std::endl;
-	std::cout << "i = " << i << std::endl;
-
-	if (i < 5) {
-		sendToClient(fd, USER_ERROR);
-		return 1;
-	}
-
-	std::string realName = input.substr(input.find(":") + 1, input.length());
-	if (realName.empty()) {
-		sendToClient(fd, USER_ERROR);
-		return 1;
-	}
-
-	// check for more stuff
-
-	client.setUserName(tmpVec[1]);
-	client.setHostName(tmpVec[2]);
-	// what is servername doing here
-	client.setRealName(realName);
-
-	printReady(client, fd);
-	return 0;
-}
-
-int Irc::initUser(Client& client) {
-	int fd = client.getFd();
-	std::string nick = client.getNickName();
-	char buffer[BUFFER_SIZE];
-	std::string input;
-
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-
-	if (len > 0) {
-		input = fixNlCr(buffer, len);
-		if (!parseUser(client, fd, input))
-			client.setSetupStatus(0);
-	}
-	
-	else if (len == 0) {
-		std::cout << nick << " has closed the connection" << std::endl;
-		disconnectClient(fd);
-	}
-
-	else {
-		std::cerr << "Error : recv() from client " << nick << std::endl;
-		sendToClient(fd, RECV_ERR);
-	}
-
-	return 0;
-}
-
-void Irc::sendToClient(int fd, std::string mess) {
-	send(fd, &mess[0], strlen(&mess[0]), 0);
-}
-
-void Irc::sendToAll(std::string mess) {
-	for (size_t i = 1; i < _fds.size(); i++)
-		send(_fds[i].fd, &mess[0], strlen(&mess[0]), 0);
-}
-
-int Irc::printWelcome(Client& client) {
-	std::string mess = "Welcome to " + _serverName + "!\n" + NICK_REQUEST;
-	sendToClient(client.getFd(), mess);
-	return 0;
-}
-
-void Irc::disconnectClient(int fd) {
 	std::cout << "Disconnected client with fd " << fd << std::endl;
+	
 	// close the client socket
 	close(fd);
 
@@ -310,56 +113,12 @@ void Irc::disconnectClient(int fd) {
 			_fds.erase(_fds.begin() + i);
 	}
 
+	// remove client from channel if joined one
+	if (_channels.find(client.getNickName()) != _channels.end())
+		_channels[client.getNickName()].removeUser(_clients[fd]);
+
 	// remove client from _clients
 	_clients.erase(fd);
-}
-
-void Irc::list(Client& client) {
-	std::string tmp;
-	for (size_t i = 0; i < _channels.size(); i++) {
-		tmp = _channels[i].getChannelName() + "\n";
-		sendToClient(client.getFd(), tmp);
-	}
-}
-
-int Irc::handleClientCmd(Client& client, std::string input) {
-	// compare input to avaliable commands
-	// manage these commands according to op level
-	int fd = client.getFd();
-
-	// /NAMES returns all users of a channel
-	if (input == "/NAMES") {
-		std::string tmp;
-		std::map<int, Client>::iterator it = _clients.begin();
-		it++;
-		while (it != _clients.end()) {
-			tmp = it->second.getNickName() + "\n";
-			sendToClient(fd, tmp);
-			it++;
-			// std::cout << it->second.getNickName() << std::endl;
-		}
-		// return 1;
-	}
-
-	// /LIST returns a list of all channels
-	else if (input == "/LIST") {
-		std::string tmp;
-		for (size_t i = 0; i < _channels.size(); i++) {
-			tmp = _channels[i].getChannelName() + "\n";
-			sendToClient(fd, tmp);
-		}
-		// return 1;
-	}
-
-	// /JOIN joins a channel
-	else if (input == "/JOIN ") {
-		std::string channelName = input.substr(7, input.length());
-		for (size_t i = 0; i < _channels.size(); i++) {
-			if (channelName == _channels[i].getChannelName())
-				_channels[i].addUser(client);
-		}
-	}
-	return 0;
 }
 
 int Irc::handleClient(Client& client) {
@@ -370,30 +129,73 @@ int Irc::handleClient(Client& client) {
 	size_t len = recv(fd, buffer, sizeof(buffer), 0);
 
 	if (len == 0) {
-		std::string mess = nick + " left the chat\n";
-		sendToAll(mess);
-		disconnectClient(fd);
+		std::string msg = nick + " left the server\n";
+		sendToAll(msg);
+		disconnectClient(client);
 	}
 
 	else if (len < 0) {
 		std::cerr << "Error : recv() from client " << nick << std::endl;
-		sendToClient(fd, RECV_ERR);
+		sendToClient(fd, ERR_RECV);
 	}
 
 	if (len > 0) {
-		std::string input = fixNlCr(buffer, len);
-		std::string mess = nick + ": " + input + "\n";
+		std::string input = processInput(buffer, len);
 
-		std::cout << "client input :" << input << std::endl;
-		if (input[0] == '/')
-			handleClientCmd(client, input);
+		if (input.empty())
+			return 0;
 
-		// delete this if no default server-wide channel
-		else if (client.getChannelJoined() == -1)
-			sendToAll(mess);
-		else
-			_channels[client.getChannelJoined()].sendToChannel(mess);
+		if (DEBUG)
+			std::cout << "registered client input :" << input << std::endl;
+		// prepare msgage string
+		// <nick>!<user>@<host>
+
+		std::vector<std::string> tokens;
+		std::stringstream ss(input);
+		std::string token;
+		while (std::getline(ss, token, ' '))
+			tokens.push_back(token);
+
+		std::string msg = nick + "!" + client.getUserName() + "@" + client.getHostName() + client.getChName() + " :";
+
+		if (tokens[0] == "PRIVMSG") {
+			std::string channel = tokens[1];
+			if (DEBUG)
+				std::cout << "PRIVMSG parsed channel :" << channel << std::endl;
+			if (_channels.find(channel) != _channels.end() && client.getChName() == channel && client.getChName() != "") {
+				for (size_t i = 2; i < tokens.size(); i++)
+					msg += tokens[i];
+				msg += "\r\n";
+				if (DEBUG)
+					std::cout << "PRIVMSG parsed msg :" << msg << std::endl;
+				client.getChJoined().sendToChannel(msg);
+			}
+		}
+
+		// test if client command
+		_cmd.handleClientCmd(client, tokens);
+		// else if (client.getChName() == "")
+		// 	sendToAll(msg);
 	}
 
 	return 0;
+}
+
+void Irc::sendToClient(int fd, std::string msg) {
+	send(fd, &msg[0], strlen(&msg[0]), 0);
+}
+
+void Irc::sendToAll(std::string msg) {
+	for (size_t i = 1; i < _fds.size(); i++)
+		send(_fds[i].fd, &msg[0], strlen(&msg[0]), 0);
+}
+
+std::string	Irc::processInput(char buffer[], size_t len) {
+	buffer[len] = 0x00;
+	std::string out = buffer;
+	size_t crnl = out.find_first_of("\r\n");
+	out = out.substr(0, crnl);
+	if (out.back() == ' ')
+		out = out.substr(0, out.size() - 1);
+	return out;
 }

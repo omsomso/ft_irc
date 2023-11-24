@@ -14,3 +14,5 @@
 	- enter some nickname
 4. Make run server
 5. Click on server/connect
+6. Join an avaliable channel
+7. PRIVMSG <channel> <message> to send messages

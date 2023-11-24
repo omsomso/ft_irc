@@ -11,34 +11,39 @@
 #include <map>
 #include <vector>
 #include <sstream>
+#include <stdlib.h>
 
-// #include "../inc/Irc.hpp"
-#include "../inc/Client.hpp"
-#include "../inc/definitions.hpp"
+// #include "Irc.hpp"
+#include "Client.hpp"
+#include "definitions.hpp"
 
 class Channel {
 	private:
-	std::string 			_name;
-	std::string 			_topic;
-	int						_id;
-	std::map<int, Client>	_users;
+		std::string 			_name;
+		std::string 			_topic;
+		int						_id;
+		std::map<int, Client>	_users;
+		// std::vector<std::string> _usNames;
 
 	public:
-	Channel(std::string name, std::string topic, int id);
-	
-	void		setChannelName(std::string name);
-	void		setChannelTopic(std::string topic);
-	void 		setChannelId(int id);
+		Channel();
+		Channel(std::string name, std::string topic, int id);
 
-	std::string getChannelName();
-	std::string getChannelTopic();
-	int			getChannelId();
+		// std::vector<std::string>	getUsNames();
 
+		std::string getChannelName();
+		std::string getChannelTopic();
+		int			getChannelId();
+		std::string	getNbUsers();
 
-	void addUser(Client& client);
-	void removeUser(Client& client);
-	void sendToUser(int fd, std::string mess);
-	void sendToChannel(std::string mess);
+		void		setChannelName(std::string const name);
+		void		setChannelTopic(std::string const topic);
+		void 		setChannelId(int id);
+
+		void 		addUser(Client& client);
+		void 		removeUser(Client& client);
+		void 		sendToUser(int fd, std::string msg);
+		void 		sendToChannel(std::string msg);
 
 };
 

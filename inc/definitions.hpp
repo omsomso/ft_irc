@@ -1,16 +1,51 @@
 #ifndef DEFINITIONS_HPP
 #define DEFINITIONS_HPP
 
-#define NICK_REQUEST "Provide a nickname with the NICK command (NICK <nickname>)\n"
-#define USER_REQUEST "Provide user info with the USER command (USER <username> <hostname> <servername> :<realname>\n"
-#define NICK_ERROR "Error : invalid NICK command! Try again.\n"
-#define USER_ERROR "Error : invalid USER command! Try again.\n"
-#define PASS_PROMPT "Please provide the server password (PASS <password>):\n"
-#define WRONG_PASS "Wrong password, try again!\n"
-#define RECV_ERR "Error in received data\n"
+#define PROMPT_PASS "Provide the server password (PASS <password>)\r\n"
+#define PROMPT_NICK "Provide a nickname (NICK <nickname>)\r\n"
+#define PROMPT_USER "Provide user info (USER <username> <hostname> <servername> <realname>\r\n"
 
-#define UIDCLIENT_CLOSE "Unidentified client has closed the connection\n"
-#define UIDCLIENT_RECV_ERR "Error : recv() from unidentified client\n"
+#define CLIENT client.getNickName()
+
+// GREETINGS
+//   RPL_WELCOME 001 <client> :Welcome to the <networkname> Network, <nick>[!<user>@<host>]"
+#define RPL_WELCOME "001 " + CLIENT + " :Welcome to " + _irc._serverName + " " + CLIENT + ". You're all set, you can now use LIST to list channels and JOIN <channel> to join a channel, " + CLIENT + ":)\r\n"
+//   RPL_YOURHOST 002 <client> :Your host is <servername>, running version <version>"
+#define RPL_YOURHOST "002 " + CLIENT + " :Your host is " + _irc._serverName + "\r\n"
+//   RPL_CREATED 003 <client> :This server was created <datetime>"
+#define RPL_CREATED "003 " + CLIENT + " :This server was created today\r\n"
+
+
+// LIST
+//  RPL_LIST 322"<client> <channel> <client count> :<topic>"
+#define RPL_LIST "322 " + CLIENT + " "
+// RPL_LISTEND 323 "<client> :End of /LIST"
+#define RPL_LISTEND "323 " + CLIENT + " :End of /LIST"
+//   "<client> <channel> :<topic>"
+
+// RPL_TOPIC 332 <client> <channel> :<topic>"
+#define RPL_TOPIC "332 " + CLIENT + " "
+
+//   "<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
+#define RPL_NAMREPLY "353 " + CLIENT + " " + "=" + "general" + " :"
+
+//   "<client> <channel> :End of /NAMES list"
+#define RPL_ENDOFNAMES "366 " + CLIENT + " " + "general" + " :\r\n"
+
+#define RPL_LUSERCLIENT "251" + "\r\n"
+
+#define ERR_NICKNAMEINUSE "433 " + CLIENT + " :Nickanme \"" + nick + "\" is already in use\r\n"
+#define ERR_PASSWDMISMATCH "464 Wrong password, try again!\r\n"
+#define ERR_USERONCHANNEL "443 " + CLIENT + " :is already on channel\r\n"
+
+#define ERR_CMD_PASS "263 Error : invalid PASS command! Try again\r\n"
+#define ERR_CMD_NICK "263 Error : invalid NICK command! Try again\r\n"
+#define ERR_CMD_USER "263 Error : invalid USER command! Try again\r\n"
+#define ERR_CMD_JOIN "263 Error : invalid channel! Try again\r\n"
+
+#define ERR_RECV "Error in received data\r\n"
+#define UIDCLIENT_CLOSE "Unidentified client has closed the connection\r\n"
+#define UIDCLIENT_RECV_ERR "Error : recv() from unidentified client\r\n"
 
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"

@@ -9,41 +9,50 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 
-#include "../inc/definitions.hpp"
-// #include "../inc/Irc.hpp"
+// #include "Channel.hpp"
+#include "definitions.hpp"
+// #include "Irc.hpp"
+
+class Channel;
 
 class Client {
 	private:
-	std::string _nickName;
-	std::string _userName;
-	std::string _hostName;
-	std::string _realName;
-	int			_fd;
-	int			_setupStatus;
-	bool		_op;
-	int			_channelJoined;
+		std::string _nickName;
+		std::string _userName;
+		std::string _hostName;
+		std::string _serverName;
+		std::string _realName;
+		std::string	_chName;
+		int			_fd;
+		int			_setupStatus;
+		bool		_op;
+		Channel*	_chJoined;
 
 	public:
-	Client();
-	std::string getNickName();
-	std::string getUserName();
-	std::string getHostName();
-	std::string getRealName();
-	int			getFd();
-	int			getSetupStatus();
-	bool		getOpStatus();
-	int			getChannelJoined();
+		Client();
+		std::string const getNickName() const;
+		std::string const getUserName() const;
+		std::string const getHostName() const;
+		std::string const getServerName() const;
+		std::string const getRealName() const;
+		int			getFd() const;
+		int			getSetupStatus() const;
+		bool		getOpStatus() const;
+		std::string	getChName() const;
+		Channel&	getChJoined() const;
 
-	void		setNickName(std::string nickName);
-	void		setUserName(std::string userName);
-	void		setHostName(std::string hostName);
-	void		setRealName(std::string realName);
-	void		setFd(int fd);
-	void		setSetupStatus(int status);
-	void		setOpStatus(bool status);
-	void		setChannelJoined(int channel);
+		void		setNickName(std::string const nickName);
+		void		setUserName(std::string const userName);
+		void		setHostName(std::string const hostName);
+		void		setServerName(std::string const serverName);
+		void		setRealName(std::string const realName);
+		void		setFd(int const fd);
+		void		setSetupStatus(int const status);
+		void		setOpStatus(bool const status);
+		void		setChName(std::string const chname);
+		void		setChJoined(Channel* channel);
 
-	void		printClientInfo();
+		void		printClientInfo() const;
 };
 
 #endif
