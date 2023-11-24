@@ -35,6 +35,9 @@ class Channel {
 		std::string getChannelTopic();
 		int			getChannelId();
 		std::string	getNbUsers();
+		std::string	getUserNamesStr();
+		std::vector<std::string> getUserNamesVec();
+		
 
 		void		setChannelName(std::string const name);
 		void		setChannelTopic(std::string const topic);

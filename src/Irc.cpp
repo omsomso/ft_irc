@@ -159,16 +159,34 @@ int Irc::handleClient(Client& client) {
 		std::string msg = nick + "!" + client.getUserName() + "@" + client.getHostName() + client.getChName() + " :";
 
 		if (tokens[0] == "PRIVMSG") {
-			std::string channel = tokens[1];
-			if (DEBUG)
-				std::cout << "PRIVMSG parsed channel :" << channel << std::endl;
-			if (_channels.find(channel) != _channels.end() && client.getChName() == channel && client.getChName() != "") {
-				for (size_t i = 2; i < tokens.size(); i++)
-					msg += tokens[i];
-				msg += "\r\n";
+			std::string target = tokens[1];
+			if (target.find('#') == 0) {
+				std::string channel = target.substr(1, target.length() - 1);
 				if (DEBUG)
-					std::cout << "PRIVMSG parsed msg :" << msg << std::endl;
-				client.getChJoined().sendToChannel(msg);
+					std::cout << "PRIVMSG parsed channel :" << channel << std::endl;
+				if (_channels.find(channel) == _channels.end()) {
+					sendToClient(client.getFd(), ERR_NOSUCHCHANNEL);
+					return 0;
+				}
+				if (client.getChName() == channel && client.getChName() != "") {
+					for (size_t i = 2; i < tokens.size(); i++)
+						msg += tokens[i];
+					msg += "\r\n";
+					if (DEBUG)
+						std::cout << "PRIVMSG parsed msg :" << msg << std::endl;
+					client.getChJoined().sendToChannel(msg);
+				}
+			}
+			else {
+				// std::vector<std::string> chusers = client.getChJoined().getUserNamesVec();
+				// for (size_t i = 0; i < chusers.size(); i++) {
+				// 	if (chusers[i] == tokens[1]) {
+				// 		std::string tok = tokens[1];
+				// 		_clients.find(tok);
+				// 		sendToClient(_clients[tokens[1]].getFd(), tokens[2]);
+				// 	}
+				// }
+				sendToClient(client.getFd(), ERR_NOSUCHNICK);
 			}
 		}
 

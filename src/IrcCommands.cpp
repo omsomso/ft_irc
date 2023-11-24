@@ -58,18 +58,27 @@ int Irc::IrcCommands::names(Client& client) {
 }
 
 int Irc::IrcCommands::join(Client& client, std::vector<std::string> tokens) {
+	// RPL_NAMREPLY 353 "<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
 	// RPL_TOPIC 332 "<client> <channel> :<topic>"
 
 	std::string channelName = tokens[1].substr(1, tokens[1].length() - 1);
+	std::string topic = RPL_TOPIC;
 	if (DEBUG)
 		std::cout << "JOIN ch token name :" << channelName << std::endl;
-	std::string msg = RPL_TOPIC;
 	if (_irc._channels.find(channelName) != _irc._channels.end()) {
 		_irc._channels[channelName].addUser(client);
-		msg += (channelName + " :" + client.getChJoined().getChannelTopic() + "\r\n");
-		if (DEBUG)
-			std::cout << "TOPIC cmd msg :" << msg << std::endl;
-		_irc.sendToClient(client.getFd(), msg);
+		std::string names = RPL_NAMREPLY + client.getChJoined().getUserNamesStr() + "\r\n";
+		std::string join = JOIN;
+		topic += (channelName + " :" + client.getChJoined().getChannelTopic() + "\r\n");
+		if (DEBUG) {
+			std::cout << "JOIN cmd msg :" << join << std::endl;
+			std::cout << "TOPIC cmd msg :" << topic << std::endl;
+			std::cout << "NAMES cmd msg :" << names << std::endl;
+		}
+		_irc.sendToClient(client.getFd(), join);
+		_irc.sendToClient(client.getFd(), topic);
+		_irc.sendToClient(client.getFd(), names);
+		_irc.sendToClient(client.getFd(), RPL_ENDOFNAMES);
 		return 0;
 	}
 
@@ -103,11 +112,13 @@ int Irc::IrcCommands::nick(Client& client, std::vector<std::string> tokens) {
 int Irc::IrcCommands::quit(Client& client, std::vector<std::string> tokens) {
 	if (!client.getChName().empty()) {
 		std::string msg;
-		for (size_t i = 1; i < tokens.size(); i++)
-			msg += tokens[i] + " ";
-		msg.substr(2, msg.length() - 2);
-		if (DEBUG)
-			std::cout << "QUIT cmd msg :" << msg << std::endl;
+		if (tokens.size() > 1) {
+			for (size_t i = 1; i < tokens.size(); i++)
+				msg += tokens[i] + " ";
+			msg.substr(2, msg.length() - 2);
+			if (DEBUG)
+				std::cout << "QUIT cmd msg :" << msg << std::endl;
+		}
 		client.getChJoined().sendToChannel(msg);
 	}
 	_irc.disconnectClient(client);

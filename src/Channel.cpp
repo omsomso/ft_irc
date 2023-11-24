@@ -18,6 +18,20 @@ int Channel::getChannelId() {
 	return this->_id;
 }
 
+std::string Channel::getUserNamesStr() {
+	std::string users;
+	for (std::map<int, Client>::iterator it = _users.begin(); it != _users.end(); it++)
+		users += ("+" + it->second.getNickName() + " ");
+	users.substr(0, users.length() - 1);
+	return users;
+}
+
+std::vector<std::string> Channel::getUserNamesVec() {
+	std::vector<std::string> users;
+	for (std::map<int, Client>::iterator it = _users.begin(); it != _users.end(); it++)
+		users.push_back(it->second.getNickName());
+	return users;
+}
 // std::vector<std::string> Channel::getUsNames() {
 // 	return this->_usNames;
 // }
@@ -51,6 +65,7 @@ void Channel::addUser(Client& client) {
 void Channel::removeUser(Client& client) {
 	std::string msg = client.getNickName() + " left the channel\n";
 	sendToChannel(msg);
+	client.setChName("");
 	client.setChJoined(nullptr);
 	_users.erase(client.getFd());
 	// _usNames.erase(client.getNickName());
