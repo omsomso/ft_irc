@@ -12,5 +12,5 @@
 6. List to list channels
 7. Double click to join channel
 8. open -n -a "Limechat" for a second limechat win, change nickname in settings...
-	- msg <#channelname> <message> to message channels
-	- msg <nickname> <message> to message users
+	- msg < #channelname > < message > to message channels
+	- msg < nickname > < message > to message users
