@@ -773,3 +773,24 @@ In this example:
 The specific format of the welcome message may vary between IRC servers. The key point is that a numeric reply of `001` generally indicates a successful registration and initiation of the IRC session.
 
 It's important to note that the IRC protocol defines a range of numeric replies, each associated with a specific meaning. Numeric replies in the `001-005` range are generally related to the connection and registration process. You can refer to the IRC RFCs (RFC 1459 and RFC 2812) for the complete list of numeric replies and their meanings.
+
+# Rebuilding the command
+
+To aggregate received packets and rebuild the command, you would typically use the `recv` function in a loop to read data from the socket into a buffer until you have received the entire command. Here's a basic example:
+
+```cpp
+std::string command;
+char buffer[1024];
+int bytesReceived = 0;
+do {
+    bytesReceived = recv(_serverSocket, buffer, sizeof(buffer) - 1, 0);
+    if (bytesReceived <= 0) {
+        // Handle error or connection closed
+        break;
+    }
+    buffer[bytesReceived] = '\0'; // Null-terminate the received data
+    command += buffer;
+} while (command.find("\r\n") == std::string::npos); // Continue until we receive a newline
+```
+
+This code will read data from the socket into a buffer, then append the data to the `command` string. It will continue doing this until it receives a newline (`"\r\n"`), which signifies the end of a command in the IRC protocol.

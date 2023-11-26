@@ -5,6 +5,12 @@ Irc::Irc(int port, std::string const pass, std::string const serverName) : _port
 int Irc::setupServer() {
 	// Set up server socket for clients to connect to on localhost:6667
 	_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+
+	// int optval = 1;
+	// if (setsockopt(_serverSocket, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0) {
+	// 	std::cerr << "Error : setsockopt" << std::endl;
+	// 	return 1;
+	// }
 	struct sockaddr_in addressSetup;
 	addressSetup.sin_family = AF_INET;
 	addressSetup.sin_port = htons(_port);
@@ -33,9 +39,8 @@ int Irc::setupServer() {
 
 	std::cout << "Server initialised" << std::endl;
 
-	Channel general("general", "whatever", 0);
+	Channel general("general", "whatever");
 	_channels.insert(std::pair<std::string, Channel>("general", general));
-	_chNames.push_back("general");
 	return 0;
 }
 
@@ -93,7 +98,9 @@ int Irc::addClient() {
 	Client newClient;
 	newClient.setFd(clientPollfd.fd);
 	_clients.insert(std::pair<int, Client>(clientPollfd.fd, newClient));
-	std::cout << "Client added with fd " << clientPollfd.fd << std::endl;
+
+	if (DEBUG)
+		std::cout << "Client added with fd " << clientPollfd.fd << std::endl;
 
 	// prompt client for server password
 	_setup.promptPass(newClient);
@@ -114,98 +121,61 @@ void Irc::disconnectClient(Client& client) {
 	}
 
 	// remove client from channel if joined one
-	if (_channels.find(client.getNickName()) != _channels.end())
-		_channels[client.getNickName()].removeUser(_clients[fd]);
-
+	std::vector<std::string> chVec = client.getChannelsJoined();
+	for (size_t i = 0; i < chVec.size(); i++) {
+		std::string tmp = chVec[i];
+		client.quitChannel(_channels[tmp]);
+	}
+	
+	// remove nick from _clientsByNicks if user set nickName
+	if (_clientsByNicks.find(client.getNickName()) != _clientsByNicks.end())
+		_clientsByNicks.erase(client.getNickName());
 	// remove client from _clients
 	_clients.erase(fd);
 }
 
 int Irc::handleClient(Client& client) {
-	int fd = client.getFd();
+	std::string clientCmd;
 	std::string nick = client.getNickName();
-	char buffer[BUFFER_SIZE];
 
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
+	int clientInputStatus = client.readClientInput();
+	
+	if (clientInputStatus == 1) {
+		clientCmd = client.getCmdBuffer();
+		clientCmd = processInput(&clientCmd[0], clientCmd.length());
+		if (DEBUG)
+			std::cout << "registered client input :" << clientCmd << std::endl;
+		_cmd.handleClientCmd(client, clientCmd);
+		client.clearCmdBuffer();
 
-	if (len == 0) {
+	}
+	else if (clientInputStatus == 0) {
 		std::string msg = nick + " left the server\n";
 		sendToAll(msg);
 		disconnectClient(client);
 	}
-
-	else if (len < 0) {
-		std::cerr << "Error : recv() from client " << nick << std::endl;
-		sendToClient(fd, ERR_RECV);
+	else if (clientInputStatus < 0) {
+		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
+		// client.sendToClient(ERR_RECV);
 	}
-
-	if (len > 0) {
-		std::string input = processInput(buffer, len);
-
-		if (input.empty())
-			return 0;
-
-		if (DEBUG)
-			std::cout << "registered client input :" << input << std::endl;
-		// prepare msgage string
-		// <nick>!<user>@<host>
-
-		std::vector<std::string> tokens;
-		std::stringstream ss(input);
-		std::string token;
-		while (std::getline(ss, token, ' '))
-			tokens.push_back(token);
-
-		std::string msg = nick + "!" + client.getUserName() + "@" + client.getHostName() + client.getChName() + " :";
-
-		if (tokens[0] == "PRIVMSG") {
-			std::string target = tokens[1];
-			if (target.find('#') == 0) {
-				std::string channel = target.substr(1, target.length() - 1);
-				if (DEBUG)
-					std::cout << "PRIVMSG parsed channel :" << channel << std::endl;
-				if (_channels.find(channel) == _channels.end()) {
-					sendToClient(client.getFd(), ERR_NOSUCHCHANNEL);
-					return 0;
-				}
-				if (client.getChName() == channel && client.getChName() != "") {
-					for (size_t i = 2; i < tokens.size(); i++)
-						msg += tokens[i];
-					msg += "\r\n";
-					if (DEBUG)
-						std::cout << "PRIVMSG parsed msg :" << msg << std::endl;
-					client.getChJoined().sendToChannel(msg);
-				}
-			}
-			else {
-				// std::vector<std::string> chusers = client.getChJoined().getUserNamesVec();
-				// for (size_t i = 0; i < chusers.size(); i++) {
-				// 	if (chusers[i] == tokens[1]) {
-				// 		std::string tok = tokens[1];
-				// 		_clients.find(tok);
-				// 		sendToClient(_clients[tokens[1]].getFd(), tokens[2]);
-				// 	}
-				// }
-				sendToClient(client.getFd(), ERR_NOSUCHNICK);
-			}
-		}
-
-		// test if client command
-		_cmd.handleClientCmd(client, tokens);
-		// else if (client.getChName() == "")
-		// 	sendToAll(msg);
-	}
+	// else if (client.getChName() == "")
+	// 	sendToAll(msg);
 
 	return 0;
-}
-
-void Irc::sendToClient(int fd, std::string msg) {
-	send(fd, &msg[0], strlen(&msg[0]), 0);
 }
 
 void Irc::sendToAll(std::string msg) {
 	for (size_t i = 1; i < _fds.size(); i++)
 		send(_fds[i].fd, &msg[0], strlen(&msg[0]), 0);
+}
+
+std::vector<std::string> Irc::tokenizeInput(std::string input, char sep) {
+	std::vector<std::string> tokens;
+	std::stringstream ss(input);
+	std::string token;
+	while (std::getline(ss, token, sep))
+		tokens.push_back(token);
+	return tokens;
 }
 
 std::string	Irc::processInput(char buffer[], size_t len) {
@@ -216,4 +186,18 @@ std::string	Irc::processInput(char buffer[], size_t len) {
 	if (out.back() == ' ')
 		out = out.substr(0, out.size() - 1);
 	return out;
+}
+
+bool Irc::channelExists(std::string channel) {
+	if (_channels.find(channel) == _channels.end())
+		return false;
+	else
+		return true;
+}
+
+bool Irc::clientExists(std::string nick) {
+	if (_clientsByNicks.find(nick) == _clientsByNicks.end())
+		return false;
+	else
+		return true;
 }

@@ -28,149 +28,141 @@ void Irc::IrcClientSetup::checkQuit(Client& client, std::string input) {
 
 void Irc::IrcClientSetup::promptPass(Client& client) {
 	std::cout << "prompting pwd for used on fd " << client.getFd() << std::endl;
-	_irc.sendToClient(client.getFd(), PROMPT_PASS);
+	client.sendToClient(PROMPT_PASS);
 }
 
 void Irc::IrcClientSetup::promptNick(Client& client) {
-	_irc.sendToClient(client.getFd(), PROMPT_NICK);
+	client.sendToClient(PROMPT_NICK);
 }
 
 void Irc::IrcClientSetup::promptUser(Client& client) {
 	std::string msg = "Welcome " + client.getNickName() + "\n" + PROMPT_USER;
-	_irc.sendToClient(client.getFd(), msg);
+	client.sendToClient(msg);
+}
+
+void Irc::IrcClientSetup::parsePass(Client& client, std::string input) {
+	checkQuit(client, input);
+	std::string cmdPass = input.substr(0, 5);
+	if (cmdPass != "PASS ") {
+		client.sendToClient(ERR_CMD_PASS);
+		return ;
+	}
+	std::string pass = input.substr(5, input.length());
+	if (pass == _irc._pass) {
+		client.setSetupStatus(2);
+		std::cout << "Client wtih fd " << client.getFd() << " entered correct pwd" << std::endl;
+		promptNick(client);
+	}
+	else
+		client.sendToClient(ERR_PASSWDMISMATCH);
 }
 
 void Irc::IrcClientSetup::checkPass(Client& client) {
-	int fd = client.getFd();
-	char buffer[BUFFER_SIZE];
-	std::string input;
+	std::string clientCmd;
+	int clientInputStatus = client.readClientInput();
 	
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-	if (len > 0) {
-
-		input = _irc.processInput(buffer, len);
+	if (clientInputStatus == 1) {
+		clientCmd = client.getCmdBuffer();
+		clientCmd = _irc.processInput(&clientCmd[0], clientCmd.length());
 		if (DEBUG)
-			std::cout << "pass check input :" << input << std::endl;
-		checkQuit(client, input);
-		std::string cmdPass = input.substr(0, 5);
-		if (cmdPass != "PASS ") {
-			_irc.sendToClient(fd, ERR_CMD_PASS);
-			return ;
-		}
-		std::string pass = input.substr(5, input.length());
-		if (pass == _irc._pass) {
-			client.setSetupStatus(2);
-			std::cout << "Client wtih fd " << fd << " entered correct pwd" << std::endl;
-			promptNick(client);
-		}
-		else
-			_irc.sendToClient(fd, ERR_PASSWDMISMATCH);
+			std::cout << "PASS setup input :" << clientCmd << std::endl;
+		checkQuit(client, clientCmd);
+		parsePass(client, clientCmd);
+		client.clearCmdBuffer();
 	}
-	else if (len == 0) {
+	else if (clientInputStatus == 0) {
 		std::cout << UIDCLIENT_CLOSE << std::endl;
 		_irc.disconnectClient(client);
 	}
-	else {
+	else if (clientInputStatus < 0) {
 		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
-		_irc.sendToClient(fd, ERR_RECV);
+		// client.sendToClient(ERR_RECV);
 	}
 }
 
-int Irc::IrcClientSetup::parseNick(Client& client, int fd, std::string input) {
+int Irc::IrcClientSetup::parseNick(Client& client, std::string input) {
 	std::string cmdNick = input.substr(0, 5);
 	std::string nick = input.substr(5, input.length() - 5);
 
 	if (cmdNick != "NICK ") {
-		_irc.sendToClient(fd, ERR_CMD_NICK);
+		client.sendToClient(ERR_NONICKNAMEGIVEN);
 		return -1;
 	}
 
 	for (size_t i = 1; i < _irc._fds.size(); i++) {
 		if (_irc._clients[_irc._fds[i].fd].getNickName() == nick) {
-			_irc.sendToClient(fd, ERR_NICKNAMEINUSE);
+			client.sendToClient(ERR_NICKNAMEINUSE);
 			return -1;
 		}
 	}
 
+	if (input.find_first_of(",") != std::string::npos)
+		client.sendToClient(ERR_ERRONEUSNICKNAME);
+
 	client.setNickName(nick);
-	_irc._clNames.push_back(nick);
+	// _irc._clNames.push_back(nick);
 	if (SKIP_ID == false) {
 		std::string msg = "Welcome " + nick + "\n" + PROMPT_USER;
-		_irc.sendToClient(fd, msg);
+		client.sendToClient(msg);
 	}
 	client.setSetupStatus(1);
 	return 0;
 }
 
 void Irc::IrcClientSetup::setupNick(Client& client) {
-	int fd = client.getFd();
-	char buffer[BUFFER_SIZE];
-	std::string input;
+	std::string clientCmd;
+	int clientInputStatus = client.readClientInput();
 	
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-
-	if (len > 0) {
-		input = _irc.processInput(buffer, len);
-		checkQuit(client, input);
+	if (clientInputStatus == 1) {
+		clientCmd = client.getCmdBuffer();
+		clientCmd = _irc.processInput(&clientCmd[0], clientCmd.length());
 		if (DEBUG)
-			std::cout << "nick setup input :" << input << std::endl;
-		parseNick(client, fd, input);
+			std::cout << "NICK setup input :" << clientCmd << std::endl;
+		checkQuit(client, clientCmd);
+		parseNick(client, clientCmd);
+		client.clearCmdBuffer();
+		_irc._clientsByNicks.insert(std::pair<std::string, Client>(client.getNickName(), client));
 	}
-	
-	else if (len == 0) {
+	else if (clientInputStatus == 0) {
 		std::cout << UIDCLIENT_CLOSE << std::endl;
 		_irc.disconnectClient(client);
 	}
-
-	else {
+	else if (clientInputStatus < 0) {
 		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
-		_irc.sendToClient(fd, ERR_RECV);
+		// client.sendToClient(ERR_RECV);
 	}
-	// return 0;
 }
 
-int Irc::IrcClientSetup::parseUser(Client& client, int fd, std::string input) {
+int Irc::IrcClientSetup::parseUser(Client& client, std::string input) {
 	std::string cmdUser = input.substr(0, 5);
 
 	if (cmdUser != "USER ") {
-		_irc.sendToClient(fd, ERR_CMD_USER);
+		client.sendToClient(ERR_CMD_USER);
 		return 1;
 	}
 
 	input = input.substr(0, input.length());
 	if (DEBUG)
 		std::cout << "user setup input :" << input << std::endl;
-	std::stringstream ss(input);
-	std::string tmp;
-	std::vector<std::string> tmpVec;
-	int i = 0;
 
-	while (std::getline(ss, tmp, ' ')) {
-		i++;
-		tmpVec.push_back(tmp);
-	}
+	std::vector<std::string> tokens = _irc.tokenizeInput(input, ' ');
 
-	// for (size_t i = 0; i < tmpVec.size(); i++)
-	// 	std::cout << tmpVec[i] << "." << std::endl;
-	// std::cout << ";" << std::endl;
-	// std::cout << "i = " << i << std::endl;
-
-	if (i < 5) {
-		_irc.sendToClient(fd, ERR_CMD_USER);
+	if (tokens.size() < 5) {
+		client.sendToClient(ERR_CMD_USER);
 		return 1;
 	}
 
 	// check for more stuff ?
 
 	std::string realname;
-	for (size_t i = 4; i < tmpVec.size(); i++)
-		realname += (tmpVec[i] + " ");
+	for (size_t i = 4; i < tokens.size(); i++)
+		realname += (tokens[i] + " ");
 	realname.substr(0, realname.length() - 1);
 
-	client.setUserName(tmpVec[1]);
-	client.setHostName(tmpVec[2]);
+	client.setUserName(tokens[1]);
+	client.setHostName(tokens[2]);
 	// what is servername doing here
-	client.setServerName(tmpVec[3]);
+	client.setServerName(tokens[3]);
 	client.setRealName(realname);
 	
 	client.setSetupStatus(0);
@@ -179,27 +171,25 @@ int Irc::IrcClientSetup::parseUser(Client& client, int fd, std::string input) {
 }
 
 void Irc::IrcClientSetup::setupUser(Client& client) {
-	int fd = client.getFd();
-	std::string nick = client.getNickName();
-	char buffer[BUFFER_SIZE];
-	std::string input;
-
-	size_t len = recv(fd, buffer, sizeof(buffer), 0);
-
-	if (len > 0) {
-		input = _irc.processInput(buffer, len);
-		checkQuit(client, input);
-		parseUser(client, fd, input);
-	}
+	std::string clientCmd;
+	int clientInputStatus = client.readClientInput();
 	
-	else if (len == 0) {
-		std::cout << nick << " has closed the connection" << std::endl;
+	if (clientInputStatus == 1) {
+		clientCmd = client.getCmdBuffer();
+		clientCmd = _irc.processInput(&clientCmd[0], clientCmd.length());
+		if (DEBUG)
+			std::cout << "USER setup input :" << clientCmd << std::endl;
+		checkQuit(client, clientCmd);
+		parseUser(client, clientCmd);
+		client.clearCmdBuffer();
+	}
+	else if (clientInputStatus == 0) {
+		std::cout << UIDCLIENT_CLOSE << std::endl;
 		_irc.disconnectClient(client);
 	}
-
-	else {
-		std::cerr << "Error : recv() from client " << nick << std::endl;
-		_irc.sendToClient(fd, ERR_RECV);
+	else if (clientInputStatus < 0) {
+		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
+		// client.sendToClient(ERR_RECV);
 	}
 }
 
@@ -209,9 +199,9 @@ void Irc::IrcClientSetup::printWelcome(Client& client) {
 
 	std::string msg = ":" + _irc._serverName + " 001 " + client.getNickName() + " :You're all set, you can now chat :)\n";
 	// std::string msg = RPL_WELCOME;
-	_irc.sendToClient(client.getFd(), RPL_WELCOME);
-	_irc.sendToClient(client.getFd(), RPL_YOURHOST);
-	_irc.sendToClient(client.getFd(), RPL_CREATED);
+	client.sendToClient(RPL_WELCOME);
+	client.sendToClient(RPL_YOURHOST);
+	client.sendToClient(RPL_CREATED);
 	
 	msg = client.getNickName() + " joined the server!\n";
 	_irc.sendToAll(msg);

@@ -1,6 +1,64 @@
 #include "../inc/Client.hpp"
 
-Client::Client() : _chName(""), _setupStatus(3), _op(false), _chJoined(nullptr) {}
+Client::Client() : _chName(""), _setupStatus(3), _op(false) {}
+
+Client::~Client() {}
+
+int Client::readClientInput() {
+	char tmpBuffer[BUFFER_SIZE];
+	size_t len = recv(_fd, tmpBuffer, sizeof(tmpBuffer), 0);
+	
+	if (len == 0) {
+		return 0;
+	}
+
+	else if (len < 0) {
+		std::cerr << "Error : recv() from client " << _nickName << std::endl;
+		sendToClient(ERR_RECV);
+		return -1;
+	}
+
+	else if (len > 0) {
+		_cmdBuffer += tmpBuffer;
+		if (_cmdBuffer.find("\r\n") != std::string::npos) {
+			return 1;
+		}
+	}
+	return 10;
+}
+
+std::string	Client::getCmdBuffer() {
+	return this->_cmdBuffer;
+}
+
+void Client::clearCmdBuffer() {
+	this->_cmdBuffer = "";
+}
+
+void Client::joinChannel(Channel& channel) {
+	setChName(channel.getChannelName());
+	// setChJoined(&channel);
+	channel.getChUsers().insert(std::pair<std::string, int>(_nickName, _fd));
+	_channelsJoined.push_back(channel.getChannelName());
+	channel.incrementUserCount();
+	channel.sendToChannel(JOIN);
+	if (DEBUG)
+		std::cout << "JOIN cmd msg :" << JOIN << std::endl;
+}
+
+void Client::quitChannel(Channel& channel) {
+	std::string msg = ":" + _nickName + " left the channel\n";
+	channel.sendToChannel(msg);
+	channel.decrementUserCount();
+	_channelsJoined.erase(std::remove(_channelsJoined.begin(), _channelsJoined.end(), channel.getChannelName()), _channelsJoined.end());
+	setChName("");
+	// setChJoined(nullptr);
+	channel.getChUsers().erase(_nickName);
+}
+
+void Client::sendToClient(std::string msg) const {
+	send(_fd, &msg[0], strlen(&msg[0]), 0);
+}
 
 std::string const Client::getNickName() const {
 	return this->_nickName;
@@ -38,8 +96,20 @@ std::string Client::getChName() const {
 	return this->_chName;
 }
 
-Channel& Client::getChJoined() const {
-	return *this->_chJoined;
+// Channel& Client::getChJoined() const {
+// 	return *this->_chJoined;
+// }
+
+std::vector<std::string> Client::getChannelsJoined() {
+	return this->_channelsJoined;
+}
+
+bool Client::hasJoinedChannel(std::string channel) {
+	for (size_t i = 0; i < _channelsJoined.size(); i++) {
+		if (_channelsJoined[i] == channel)
+			return true;
+	}
+	return false;
 }
 
 void Client::setNickName(std::string const nickName) {
@@ -78,8 +148,17 @@ void Client::setChName(std::string const chname) {
 	this->_chName = chname;
 }
 
-void Client::setChJoined(Channel* channel) {
-	this->_chJoined = channel;
+// void Client::setChJoined(Channel* channel) {
+// 	this->_chJoined = channel;
+// }
+
+bool Client::sharesAChannelWith(Client& target) {
+	std::vector<std::string> vec1 = target.getChannelsJoined();
+	std::vector<std::string> vec2 = getChannelsJoined();
+	if (std::find_first_of(vec1.begin(), vec1.end(), vec2.begin(), vec2.end()) != vec1.end())
+		return true;
+	else
+		return false;
 }
 
 void Client::printClientInfo() const {

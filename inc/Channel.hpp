@@ -14,39 +14,59 @@
 #include <stdlib.h>
 
 // #include "Irc.hpp"
-#include "Client.hpp"
+// #include "Client.hpp"
 #include "definitions.hpp"
+
+class Client;
 
 class Channel {
 	private:
-		std::string 			_name;
-		std::string 			_topic;
-		int						_id;
-		std::map<int, Client>	_users;
-		// std::vector<std::string> _usNames;
+		std::string _name;
+		std::string _topic;
+		bool		_inviteOnly;
+		bool		_topicRestricted;
+		bool		_keyProtected;
+		std::string	_key;
+		int			_userLimit;
+		int			_userCount;
+
+		std::map<std::string, int>	_users;
 
 	public:
 		Channel();
-		Channel(std::string name, std::string topic, int id);
-
-		// std::vector<std::string>	getUsNames();
+		Channel(std::string name, std::string topic);
+		~Channel();
 
 		std::string getChannelName();
 		std::string getChannelTopic();
-		int			getChannelId();
 		std::string	getNbUsers();
-		std::string	getUserNamesStr();
-		std::vector<std::string> getUserNamesVec();
-		
+		std::string	getChUserNamesStr();
+		bool		isInviteOnly();
+		bool		getTopicRestricedStatus();
+		bool		isKeyProtected();
+		int			getUserLimit();
+		int			getUserCount();
+		std::string	getKey();
 
-		void		setChannelName(std::string const name);
-		void		setChannelTopic(std::string const topic);
-		void 		setChannelId(int id);
+		std::map<std::string, int>&		getChUsers();
+		std::vector<std::string>		getChUserNamesVec();
 
-		void 		addUser(Client& client);
-		void 		removeUser(Client& client);
-		void 		sendToUser(int fd, std::string msg);
-		void 		sendToChannel(std::string msg);
+		void	setChannelName(std::string const name);
+		void	setChannelTopic(std::string const topic);
+		void	setInviteStatus(bool status);
+		void	setTopicRestrictedStatus(bool status);
+		void	setKeyProtected(bool status);
+		void	setKey(std::string key);
+		void	setUserLimit(int limit);
+		void	incrementUserCount();
+		void	decrementUserCount();
+		bool	isFull();
+
+		void	sendToChannel(std::string msg);
+		void	sendToChannelButUser(int fdExcluded, std::string msg);
+
+		int		getUserFdFromNick(std::string nickName);
+		bool	isOnChannel(std::string nickName);
 
 };
 

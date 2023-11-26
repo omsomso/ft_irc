@@ -11,15 +11,12 @@
 #include <map>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 // #include "IrcCommands.hpp"
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "definitions.hpp"
-
-#define DEBUG true
-#define SKIP_ID false
-#define BUFFER_SIZE 1024
 
 class Irc {
 	public:
@@ -27,20 +24,34 @@ class Irc {
 		int setupServer();
 		int monitor();
 
+	private:
 		class IrcCommands {
 			private:
 				Irc& _irc;
+				std::string _input;
+				std::vector<std::string> _tokens;
 
 			public:
 				IrcCommands(Irc& irc);
 
-				int	handleClientCmd(Client& client, std::vector<std::string> tokens);
-				int	list(Client& client);
-				int	names(Client& client);
-				int	join(Client& client, std::vector<std::string> tokens);
-				int	nick(Client& client, std::vector<std::string> tokens);
-				int topic(Client& client, std::vector<std::string> tokens);
-				int quit(Client& client, std::vector<std::string> tokens);
+				void	handleClientCmd(Client& client, std::string input);
+				void	privmsg(Client& client);
+				void	msgChannel(Client &client, std::string msg);
+				void	msgUser(Client &client, std::string msg);
+				void	list(Client& client);
+				void	names(Client& client);
+				void	join(Client& client);
+				void	nick(Client& client);
+				void	topic(Client& client);
+				void	quit(Client& client);
+				void	kick(Client& client);
+				void	invite(Client &client);
+				void	triggerOp(Client &client);
+				void	mode(Client& client);
+				void	modeChannelKey(Client& client, Channel& channel, bool status);
+				void	modeChannelLimit(Client& client, Channel& channel, bool status);
+				void	modeOpClient(Client& client, bool status);
+				void	alreadyRegistered(Client& client);
 
 		};
 
@@ -62,13 +73,13 @@ class Irc {
 				void	setupNick(Client& client);
 				void	setupUser(Client& client);
 
-				int		parseNick(Client& client, int fd, std::string input);
-				int		parseUser(Client& client, int fd, std::string input);
+				void	parsePass(Client& client, std::string input);
+				int		parseNick(Client& client, std::string input);
+				int		parseUser(Client& client, std::string input);
 
 				void	printWelcome(Client& client);
 		};
 
-	private:
 		int					_port;
 		std::string const	_pass;
 		std::string const	_serverName;
@@ -81,21 +92,23 @@ class Irc {
 	
 		std::vector<pollfd>				_fds;
 		std::map<int, Client>			_clients;
-		std::vector<std::string>		_clNames;
+		std::map<std::string, Client>	_clientsByNicks;
 		std::map<std::string, Channel>	_channels;
-		std::vector<std::string>		_chNames;
 
 		int			addClient();
 		char*		fixBufferSymbols(char buffer[], size_t len);
-		std::string	processInput(char buffer[], size_t len);
+
 
 		void		disconnectClient(Client& client);
-		void		sendToClient(int fd, std::string msg);
 		void		sendToAll(std::string msg);
 
 		int			handleClient(Client& client);
 		int			handleClientCmd(Client& client, std::string input);
 
+		std::vector<std::string> tokenizeInput(std::string input, char sep);
+		std::string	processInput(char buffer[], size_t len);
+		bool	channelExists(std::string channel);
+		bool	clientExists(std::string nick);
 };
 
 	// void sigAccept(void);
