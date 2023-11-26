@@ -1,8 +1,3 @@
-# Test
-
-1. Run server
-2. In another terminal window, run `nc localhost 6667`
-
 # Limechat test
 
 1. Get limechat http://limechat.net/mac/
@@ -14,5 +9,8 @@
 	- enter some nickname
 4. Make run server
 5. Click on server/connect
-6. Join an avaliable channel
-7. PRIVMSG <channel> <message> to send messages
+6. List to list channels
+7. Double click to join channel
+8. open -n -a "Limechat" for a second limechat win, change nickname in settings...
+	- msg <#channelname> <message> to message channels
+	- msg <nickname> <message> to message users
