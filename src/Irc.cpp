@@ -79,8 +79,9 @@ int Irc::monitor() {
 			}
 		}
 	}
+	sleep(1);
 	std::cout << "Shutting down server" << std::endl;
-	// disconnectAllClients();
+	disconnectAllClients();
 	close(_serverSocket);
 	return 0;
 }
@@ -217,11 +218,8 @@ void Irc::sendToJoinedChannels(Client& client, std::string msg, std::string opt)
 }
 
 void	Irc::disconnectAllClients() {
-	std::map<int, Client>::iterator it = _clients.begin();
-	it++;
-	while (it != _clients.end()) {
-		disconnectClient(it->second);
-		it++;
+	for (size_t i = 1; i < _fds.size(); i++) {
+			close(_fds[i].fd);
 	}
 }
 
