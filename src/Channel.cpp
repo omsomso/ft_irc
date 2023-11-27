@@ -2,8 +2,8 @@
 
 Channel::Channel() {}
 
-Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topic), _inviteOnly(0), _topicRestricted(0), _keyProtected(0), _key("password"), _userLimit(-1) {
-	std::cout << "Created channel " << name << " with topic " << topic << std::endl;
+Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topic), _inviteOnly(0), _topicRestricted(1), _keyProtected(0), _key(""), _userLimit(-1) {
+	std::cout << GREY "Created channel #" << name << " with topic \"" << topic << "\"" << END << std::endl;
 }
 
 Channel::~Channel() {}
@@ -20,8 +20,9 @@ std::string Channel::getChannelTopic() {
 std::string Channel::getChUserNamesStr() {
 	std::string userNames = "";
 	for (std::map<std::string, int>::iterator it = _users.begin(); it != _users.end(); it++)
-		userNames += ("+" + it->first + " ");
+		userNames += (it->first + " ");
 	userNames.substr(0, userNames.length() - 1);
+	userNames.pop_back();
 	return userNames;
 }
 
@@ -119,7 +120,15 @@ void Channel::sendToChannelButUser(int fdExcluded, std::string msg) {
 	}
 }
 
+void Channel::changeNickName(std::string oldNick, std::string newNick) {
+	std::map<std::string, int>::iterator it = _users.find(oldNick);
+	int tmp = it->second;
+	_users.erase(it);
+	_users.insert(std::pair<std::string, int>(newNick, tmp)); // Insert the new pair
+}
+
 int Channel::getUserFdFromNick(std::string nickName) {
+	return _users[nickName];
 	std::map<std::string, int>::iterator it = _users.begin();
 	while (it != _users.end()) {
 		if (it->first == nickName)
@@ -130,9 +139,12 @@ int Channel::getUserFdFromNick(std::string nickName) {
 }
 
 bool	Channel::isOnChannel(std::string nickName) {
+	if (_users.find(nickName) == _users.end())
+		return false;
+	else
+		return true;
 	for (std::map<std::string, int>::iterator it = _users.begin(); it != _users.end(); it++) {
 		if (it->first == nickName)
 			return true;
 	}
-	return false;
 }

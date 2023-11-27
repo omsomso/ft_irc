@@ -61,6 +61,7 @@ class Channel {
 		void	incrementUserCount();
 		void	decrementUserCount();
 		bool	isFull();
+		void	changeNickName(std::string oldNick, std::string newNick);
 
 		void	sendToChannel(std::string msg);
 		void	sendToChannelButUser(int fdExcluded, std::string msg);

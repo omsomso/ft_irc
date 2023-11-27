@@ -71,7 +71,7 @@ class Client {
 		void	setFd(int const fd);
 		void	setSetupStatus(int const status);
 		void	setOpStatus(bool const status);
-		void	setChName(std::string const chname);
+		// void	setChName(std::string const chname);
 		// void	setChJoined(Channel* channel);
 		bool	sharesAChannelWith(Client& target);
 

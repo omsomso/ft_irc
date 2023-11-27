@@ -3,21 +3,22 @@
 Irc::IrcClientSetup::IrcClientSetup(Irc &irc) : _irc(irc) {}
 
 void Irc::IrcClientSetup::setupNewClients(Client& client, int fd) {
-	// if a client tries to connect to localhost:6667 (establish first connection)
+	signal(SIGINT, Irc::signalHandler);
+	// if a client tries to connect to port 6667 (establish first connection)
 	if (fd == _irc._serverSocket)
 		_irc.addClient();
 
 	// test client status : 3 = no pass, 2 = no nick, 1 = no userdata
 	// 0 = fully setup
-	else if (client.getSetupStatus() == 3)
+	else if (client.getSetupStatus() == PASS)
 		checkPass(client);
-	else if (client.getSetupStatus() == 2)
+	else if (client.getSetupStatus() == NICK)
 		setupNick(client);
-	else if (client.getSetupStatus() == 1 && SKIP_ID == true) {
-		client.setSetupStatus(0);
+	else if (client.getSetupStatus() == USER && SKIP_ID == true) {
+		client.setSetupStatus(USER);
 		printWelcome(client);
 	}
-	else if (client.getSetupStatus() == 1)
+	else if (client.getSetupStatus() == USER)
 		setupUser(client);
 }
 
@@ -27,7 +28,8 @@ void Irc::IrcClientSetup::checkQuit(Client& client, std::string input) {
 }
 
 void Irc::IrcClientSetup::promptPass(Client& client) {
-	std::cout << "prompting pwd for used on fd " << client.getFd() << std::endl;
+	if (DEBUG)
+		std::cout << "prompting pwd for user on fd " << client.getFd() << std::endl;
 	client.sendToClient(PROMPT_PASS);
 }
 
@@ -49,8 +51,9 @@ void Irc::IrcClientSetup::parsePass(Client& client, std::string input) {
 	}
 	std::string pass = input.substr(5, input.length());
 	if (pass == _irc._pass) {
-		client.setSetupStatus(2);
-		std::cout << "Client wtih fd " << client.getFd() << " entered correct pwd" << std::endl;
+		client.setSetupStatus(NICK);
+		if (DEBUG)
+			std::cout << "Client with fd " << client.getFd() << " entered correct pwd" << std::endl;
 		promptNick(client);
 	}
 	else
@@ -100,12 +103,11 @@ int Irc::IrcClientSetup::parseNick(Client& client, std::string input) {
 		client.sendToClient(ERR_ERRONEUSNICKNAME);
 
 	client.setNickName(nick);
-	// _irc._clNames.push_back(nick);
 	if (SKIP_ID == false) {
 		std::string msg = "Welcome " + nick + "\n" + PROMPT_USER;
 		client.sendToClient(msg);
 	}
-	client.setSetupStatus(1);
+	client.setSetupStatus(USER);
 	return 0;
 }
 
@@ -121,7 +123,7 @@ void Irc::IrcClientSetup::setupNick(Client& client) {
 		checkQuit(client, clientCmd);
 		parseNick(client, clientCmd);
 		client.clearCmdBuffer();
-		_irc._clientsByNicks.insert(std::pair<std::string, Client>(client.getNickName(), client));
+		_irc._clientsByNicks.insert(std::pair<std::string, Client*>(client.getNickName(), &client));
 	}
 	else if (clientInputStatus == 0) {
 		std::cout << UIDCLIENT_CLOSE << std::endl;
@@ -152,20 +154,17 @@ int Irc::IrcClientSetup::parseUser(Client& client, std::string input) {
 		return 1;
 	}
 
-	// check for more stuff ?
-
 	std::string realname;
 	for (size_t i = 4; i < tokens.size(); i++)
 		realname += (tokens[i] + " ");
-	realname.substr(0, realname.length() - 1);
+	realname.pop_back();
 
 	client.setUserName(tokens[1]);
 	client.setHostName(tokens[2]);
-	// what is servername doing here
 	client.setServerName(tokens[3]);
 	client.setRealName(realname);
 	
-	client.setSetupStatus(0);
+	client.setSetupStatus(REGISTERED);
 	printWelcome(client);
 	return 0;
 }
@@ -198,11 +197,10 @@ void Irc::IrcClientSetup::printWelcome(Client& client) {
 	client.printClientInfo();
 
 	std::string msg = ":" + _irc._serverName + " 001 " + client.getNickName() + " :You're all set, you can now chat :)\n";
-	// std::string msg = RPL_WELCOME;
 	client.sendToClient(RPL_WELCOME);
 	client.sendToClient(RPL_YOURHOST);
 	client.sendToClient(RPL_CREATED);
 	
-	msg = client.getNickName() + " joined the server!\n";
+	msg = ":" + client.getNickName() + " joined the server!\r\n";
 	_irc.sendToAll(msg);
 }

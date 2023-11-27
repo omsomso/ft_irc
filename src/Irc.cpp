@@ -1,33 +1,30 @@
 #include "../inc/Irc.hpp"
 
+bool Irc::quitFlag = 0;
+
 Irc::Irc(int port, std::string const pass, std::string const serverName) : _port(port), _pass(pass), _serverName(serverName), _cmd(*this), _setup(*this) {}
 
 int Irc::setupServer() {
 	// Set up server socket for clients to connect to on localhost:6667
 	_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
-	// int optval = 1;
-	// if (setsockopt(_serverSocket, SOL_SOCKET, SO_KEEPALIVE, &optval, sizeof(optval)) < 0) {
-	// 	std::cerr << "Error : setsockopt" << std::endl;
-	// 	return 1;
-	// }
 	struct sockaddr_in addressSetup;
 	addressSetup.sin_family = AF_INET;
 	addressSetup.sin_port = htons(_port);
-	addressSetup.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addressSetup.sin_addr.s_addr = inet_addr("0.0.0.0");
 
 	// cast struct sockaddr_in into struct sockaddr*
 	_serverAddress = (struct sockaddr*)&addressSetup;
 
 	// bind serverSocket to localhost:6667
 	if (bind(_serverSocket, _serverAddress, (socklen_t)sizeof(struct sockaddr)) < 0) {
-		std::cerr << "Error : bind - try waiting a moment..." << std::endl;
+		std::cerr << RED "Error : bind - try waiting a moment..." END << std::endl;
 		return 1;
 	}
 
 	// mark the _serverSocket as passive
 	if (listen(_serverSocket, SOMAXCONN) < 0) {
-		std::cerr << "Error : listen" << std::endl;
+		std::cerr << RED "Error : listen" END << std::endl;
 		return 1;
 	}
 
@@ -37,24 +34,32 @@ int Irc::setupServer() {
 	serverPollfd.events = POLLIN;
 	_fds.push_back(serverPollfd);
 
-	std::cout << "Server initialised" << std::endl;
+	std::cout << ORANGE "Server initialised" END << std::endl;
 
 	Channel general("general", "whatever");
+	Channel animals("animals", "birbs");
+	Channel rp("rp", "lotr");
 	_channels.insert(std::pair<std::string, Channel>("general", general));
+	_channels.insert(std::pair<std::string, Channel>("animals", animals));
+	_channels.insert(std::pair<std::string, Channel>("rp", rp));
 	return 0;
 }
 
 int Irc::monitor() {
-	std::cout << "Waiting for incoming connections" << std::endl;
+	std::cout << GREEN "Waiting for incoming connections" END << std::endl;
 
 	// main monitoring loop
-	while (true) {
+	while (quitFlag == 0) {
+		if (quitFlag)
+			break ;
 		// monitor the sockets vector
-		int pollResult = poll(_fds.data(), _fds.size(), -1);
+		int pollResult = poll(_fds.data(), _fds.size(), 1000);
 
 		// in case of poll error shut the whole thing down
 		if (pollResult == -1) {
-			std::cerr << "Error : poll" << std::endl;
+			if (errno == EINTR)
+				break ;
+			std::cerr << RED "Error : poll" END << std::endl;
 			close(_serverSocket);
 			return 1;
 		}
@@ -67,13 +72,15 @@ int Irc::monitor() {
 
 			// if there are POLLIN events from poll
 			if (_fds[i].revents & POLLIN) {
-				if (client.getSetupStatus() == 0)
+				if (client.getSetupStatus() == REGISTERED)
 					handleClient(client);
 				else
 					_setup.setupNewClients(client, _fds[i].fd);
 			}
 		}
 	}
+	std::cout << "Shutting down server" << std::endl;
+	// disconnectAllClients();
 	close(_serverSocket);
 	return 0;
 }
@@ -155,11 +162,8 @@ int Irc::handleClient(Client& client) {
 		disconnectClient(client);
 	}
 	else if (clientInputStatus < 0) {
-		std::cerr << UIDCLIENT_RECV_ERR << std::endl;
-		// client.sendToClient(ERR_RECV);
+		std::cerr << ERR_RECV << std::endl;
 	}
-	// else if (client.getChName() == "")
-	// 	sendToAll(msg);
 
 	return 0;
 }
@@ -200,4 +204,28 @@ bool Irc::clientExists(std::string nick) {
 		return false;
 	else
 		return true;
+}
+
+void Irc::sendToJoinedChannels(Client& client, std::string msg, std::string opt) {
+	std::vector<std::string> channels = client.getChannelsJoined();
+	for (size_t i = 0; i < channels.size(); i++) {
+		if (opt == "QUIT")
+			_channels[channels[i]].sendToChannel(QUITMSG);
+		if (opt == "NICK")
+			_channels[channels[i]].sendToChannel(NICKCHANNELNOTIF);
+	}
+}
+
+void	Irc::disconnectAllClients() {
+	std::map<int, Client>::iterator it = _clients.begin();
+	it++;
+	while (it != _clients.end()) {
+		disconnectClient(it->second);
+		it++;
+	}
+}
+
+void Irc::signalHandler(int signal) {
+	if (signal == SIGINT)
+		quitFlag = 1;
 }

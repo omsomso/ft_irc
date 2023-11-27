@@ -36,18 +36,6 @@ int testPass(std::string pass) {
 	return 0;
 }
 
-// void sigHandle(int sig) {
-// 	if (sig == SIGINT)
-
-
-// }
-
-// void sigAccept() {
-// 	// show_ctrl_disable();
-// 	signal(SIGINT, sigHandle);
-// 	// signal(SIGQUIT, sigHandle);
-// }
-
 int main(int ac, char** av) {
 	if (ac != 3) {
 		std::cerr << "Error : usage => ./ircserv <port> <password>" << std::endl;
@@ -63,8 +51,6 @@ int main(int ac, char** av) {
 
 	Irc irc(stoi(port), pass, "Super-Serveur");
 	std::cout << "Starting server on port " << port << " with password " << pass << std::endl;
-
-	// sigAccept();
 	if (irc.setupServer())
 		return 0;
 	if (irc.monitor())

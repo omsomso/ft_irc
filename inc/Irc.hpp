@@ -18,11 +18,19 @@
 #include "Client.hpp"
 #include "definitions.hpp"
 
+enum setupStatus {
+	REGISTERED,
+	USER,
+	NICK,
+	PASS,
+};
+
 class Irc {
 	public:
-		Irc(int const port, std::string const pass, std::string const serverName);
-		int setupServer();
-		int monitor();
+	Irc(int const port, std::string const pass, std::string const serverName);
+	int setupServer();
+	int monitor();
+	static bool	quitFlag;
 
 	private:
 		class IrcCommands {
@@ -39,7 +47,7 @@ class Irc {
 				void	msgChannel(Client &client, std::string msg);
 				void	msgUser(Client &client, std::string msg);
 				void	list(Client& client);
-				void	names(Client& client);
+				// void	names(Client& client);
 				void	join(Client& client);
 				void	nick(Client& client);
 				void	topic(Client& client);
@@ -48,8 +56,8 @@ class Irc {
 				void	invite(Client &client);
 				void	triggerOp(Client &client);
 				void	mode(Client& client);
-				void	modeChannelKey(Client& client, Channel& channel, bool status);
-				void	modeChannelLimit(Client& client, Channel& channel, bool status);
+				void	modeChannelKey(Client& client, Channel& targetChannel, bool status);
+				void	modeChannelLimit(Client& client, Channel& targetChannel, bool status);
 				void	modeOpClient(Client& client, bool status);
 				void	alreadyRegistered(Client& client);
 
@@ -92,12 +100,11 @@ class Irc {
 	
 		std::vector<pollfd>				_fds;
 		std::map<int, Client>			_clients;
-		std::map<std::string, Client>	_clientsByNicks;
+		std::map<std::string, Client*>	_clientsByNicks;
 		std::map<std::string, Channel>	_channels;
 
 		int			addClient();
 		char*		fixBufferSymbols(char buffer[], size_t len);
-
 
 		void		disconnectClient(Client& client);
 		void		sendToAll(std::string msg);
@@ -109,9 +116,9 @@ class Irc {
 		std::string	processInput(char buffer[], size_t len);
 		bool	channelExists(std::string channel);
 		bool	clientExists(std::string nick);
+		void	sendToJoinedChannels(Client& client, std::string msg, std::string opt);
+		void	disconnectAllClients();
+		static void	signalHandler(int signal);
 };
-
-	// void sigAccept(void);
-	// void sigHandle(int sig);
 
 #endif

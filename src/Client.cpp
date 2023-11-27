@@ -8,6 +8,12 @@ int Client::readClientInput() {
 	char tmpBuffer[BUFFER_SIZE];
 	size_t len = recv(_fd, tmpBuffer, sizeof(tmpBuffer), 0);
 	
+	if (len >= BUFFER_SIZE) {
+		clearCmdBuffer();
+		sendToClient(ERR_INPUTTOOLONG);
+		return 10;
+	}
+
 	if (len == 0) {
 		return 0;
 	}
@@ -20,7 +26,12 @@ int Client::readClientInput() {
 
 	else if (len > 0) {
 		_cmdBuffer += tmpBuffer;
-		if (_cmdBuffer.find("\r\n") != std::string::npos) {
+		if (_cmdBuffer.find("\n") != std::string::npos) {
+			if (_cmdBuffer.size() >= BUFFER_SIZE) {
+				clearCmdBuffer();
+				sendToClient(ERR_INPUTTOOLONG);
+				return 10;
+			}
 			return 1;
 		}
 	}
@@ -36,23 +47,20 @@ void Client::clearCmdBuffer() {
 }
 
 void Client::joinChannel(Channel& channel) {
-	setChName(channel.getChannelName());
-	// setChJoined(&channel);
 	channel.getChUsers().insert(std::pair<std::string, int>(_nickName, _fd));
 	_channelsJoined.push_back(channel.getChannelName());
 	channel.incrementUserCount();
 	channel.sendToChannel(JOIN);
-	if (DEBUG)
+	if (DEBUG) {
 		std::cout << "JOIN cmd msg :" << JOIN << std::endl;
+	}
 }
 
 void Client::quitChannel(Channel& channel) {
 	std::string msg = ":" + _nickName + " left the channel\n";
 	channel.sendToChannel(msg);
 	channel.decrementUserCount();
-	_channelsJoined.erase(std::remove(_channelsJoined.begin(), _channelsJoined.end(), channel.getChannelName()), _channelsJoined.end());
-	setChName("");
-	// setChJoined(nullptr);
+	_channelsJoined.erase(std::remove(_channelsJoined.begin(), _channelsJoined.end(), channel.getChannelName()));
 	channel.getChUsers().erase(_nickName);
 }
 
@@ -106,8 +114,9 @@ std::vector<std::string> Client::getChannelsJoined() {
 
 bool Client::hasJoinedChannel(std::string channel) {
 	for (size_t i = 0; i < _channelsJoined.size(); i++) {
-		if (_channelsJoined[i] == channel)
+		if (_channelsJoined[i] == channel) {
 			return true;
+		}
 	}
 	return false;
 }
@@ -144,9 +153,9 @@ void Client::setOpStatus(bool const status) {
 	this->_op = status;
 }
 
-void Client::setChName(std::string const chname) {
-	this->_chName = chname;
-}
+// void Client::setChName(std::string const chname) {
+// 	this->_chName = chname;
+// }
 
 // void Client::setChJoined(Channel* channel) {
 // 	this->_chJoined = channel;
