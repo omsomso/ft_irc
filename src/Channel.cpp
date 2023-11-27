@@ -9,7 +9,6 @@ Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topi
 Channel::~Channel() {}
 
 std::string Channel::getChannelName() {
-	(void) _userLimit;
 	return this->_name;
 }
 

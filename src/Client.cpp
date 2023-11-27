@@ -104,10 +104,6 @@ std::string Client::getChName() const {
 	return this->_chName;
 }
 
-// Channel& Client::getChJoined() const {
-// 	return *this->_chJoined;
-// }
-
 std::vector<std::string> Client::getChannelsJoined() {
 	return this->_channelsJoined;
 }
@@ -153,14 +149,6 @@ void Client::setOpStatus(bool const status) {
 	this->_op = status;
 }
 
-// void Client::setChName(std::string const chname) {
-// 	this->_chName = chname;
-// }
-
-// void Client::setChJoined(Channel* channel) {
-// 	this->_chJoined = channel;
-// }
-
 bool Client::sharesAChannelWith(Client& target) {
 	std::vector<std::string> vec1 = target.getChannelsJoined();
 	std::vector<std::string> vec2 = getChannelsJoined();
@@ -178,6 +166,5 @@ void Client::printClientInfo() const {
 	std::cout << "Real name\t: " << _realName << std::endl;
 	std::cout << "Setup status\t: " << _setupStatus << std::endl;
 	std::cout << "Operator status\t: " << _op << std::endl;
-	// std::cout << "Channel joined\t: " << _channelJoined << END << std::endl;
 	std::cout << END;
 }

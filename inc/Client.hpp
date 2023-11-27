@@ -13,11 +13,6 @@
 
 #include "Channel.hpp"
 #include "definitions.hpp"
-// #include "Irc.hpp"
-// #include "Commands.hpp"
-
-class Irc;
-// class Channel;
 
 class Client {
 	private:
@@ -30,11 +25,8 @@ class Client {
 		int			_fd;
 		int			_setupStatus;
 		bool		_op;
-		// Channel*	_chJoined;
 		std::vector<std::string> _channelsJoined;
 
-		std::string _input;
-		std::vector<std::string> _tokens;
 		std::string _cmdBuffer;
 
 	public:
@@ -71,8 +63,6 @@ class Client {
 		void	setFd(int const fd);
 		void	setSetupStatus(int const status);
 		void	setOpStatus(bool const status);
-		// void	setChName(std::string const chname);
-		// void	setChJoined(Channel* channel);
 		bool	sharesAChannelWith(Client& target);
 
 		void	printClientInfo() const;

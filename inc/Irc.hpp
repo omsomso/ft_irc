@@ -13,7 +13,6 @@
 #include <sstream>
 #include <algorithm>
 
-// #include "IrcCommands.hpp"
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "definitions.hpp"
