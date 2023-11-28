@@ -65,6 +65,8 @@ class Client {
 		void	setOpStatus(bool const status);
 		bool	sharesAChannelWith(Client& target);
 
+		void	sendChannelMembersToNewUser(Channel& joinedChannel);
+
 		void	printClientInfo() const;
 };
 

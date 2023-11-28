@@ -31,13 +31,15 @@
 //   "<client> <channel> :<topic>"
 
 
-// JOIN
+// JOIN / PART
 #define JOIN ":" + _nickName + " JOIN #" + channel.getChannelName() + "\r\n"
 // RPL_NAMREPLY 353 "<client> <symbol> <channel> :[prefix]<nick>{ [prefix]<nick>}"
+#define JOINEXISTINGUSERS ":" + it->first + " JOIN #" + joinedChannel.getChannelName() + "\r\n"
 #define RPL_NAMREPLY "353 " + CLIENT + " = " + targetChannel.getChannelName() + " :" + targetChannel.getChUserNamesStr() + "\r\n"
 // RPL_ENDOFNAMES 366 "<client> <channel> :End of /NAMES list"
 #define RPL_ENDOFNAMES CLIENT + " #" + targetChannel.getChannelName() + " :End of /NAMES list\r\n"
-
+// :dan-!d@localhost PART #test 
+#define PART ":" + _nickName + " PART #" + channel.getChannelName() + "\r\n"
 
 // TOPIC
 // RPL_TOPIC 332 <client> <channel> :<topic>"
@@ -80,8 +82,6 @@
 #define ERR_CHANNELLIMIT "471 " + CLIENT + " #" + channel + " :Channel has more members than its limit, aborting\r\n"
 
 
-
-
 // OPERATOR
 // ERR_NOPRIVILEGES (481)  "<client> :Permission Denied- You're not an IRC operator"
 #define ERR_NOPRIVILEGES "481 " + CLIENT + " :Permission Denied- You're not an IRC operator\r\n"
@@ -97,7 +97,7 @@
 
 // OTHER
 // RPL_INVITING (341)  "<client> <nick> <channel>"
-#define RPL_INVITING "341 " + CLIENT + " " + nick + " #" + channel + "\r\n"
+#define RPL_INVITING "341 " + CLIENT + " " + nick + " " + channel + "\r\n"
 // ERR_UNKNOWNCOMMAND (421) "<client> <command> :Unknown command"
 #define ERR_UNKNOWNCOMMAND "421 " + CLIENT + " " + _tokens[0] + " :Unknown command\r\n"
 // ERR_NEEDMOREPARAMS (461)  "<client> <command> :Not enough parameters"

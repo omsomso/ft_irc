@@ -47,9 +47,7 @@ class Channel {
 		int			getUserLimit();
 		int			getUserCount();
 		std::string	getKey();
-
 		std::map<std::string, int>&		getChUsers();
-		std::vector<std::string>		getChUserNamesVec();
 
 		void	setChannelName(std::string const name);
 		void	setChannelTopic(std::string const topic);
@@ -65,8 +63,6 @@ class Channel {
 
 		void	sendToChannel(std::string msg);
 		void	sendToChannelButUser(int fdExcluded, std::string msg);
-
-		int		getUserFdFromNick(std::string nickName);
 		bool	isOnChannel(std::string nickName);
 
 };

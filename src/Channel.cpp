@@ -25,13 +25,6 @@ std::string Channel::getChUserNamesStr() {
 	return userNames;
 }
 
-std::vector<std::string> Channel::getChUserNamesVec() {
-	std::vector<std::string> userNames;
-	for (std::map<std::string, int>::iterator it = _users.begin(); it != _users.end(); it++)
-		userNames.push_back("+" + it->first + " ");
-	return userNames;
-}
-
 std::string Channel::getNbUsers() {
 	return (std::to_string(this->_users.size()));
 }
@@ -124,17 +117,6 @@ void Channel::changeNickName(std::string oldNick, std::string newNick) {
 	int tmp = it->second;
 	_users.erase(it);
 	_users.insert(std::pair<std::string, int>(newNick, tmp)); // Insert the new pair
-}
-
-int Channel::getUserFdFromNick(std::string nickName) {
-	return _users[nickName];
-	std::map<std::string, int>::iterator it = _users.begin();
-	while (it != _users.end()) {
-		if (it->first == nickName)
-			break ;
-		it++;
-	}
-	return it->second;
 }
 
 bool	Channel::isOnChannel(std::string nickName) {

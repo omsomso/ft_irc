@@ -46,8 +46,9 @@ class Irc {
 				void	msgChannel(Client &client, std::string msg);
 				void	msgUser(Client &client, std::string msg);
 				void	list(Client& client);
-				// void	names(Client& client);
+				void	names(Client& client);
 				void	join(Client& client);
+				void	part(Client& client);
 				void	nick(Client& client);
 				void	topic(Client& client);
 				void	quit(Client& client);

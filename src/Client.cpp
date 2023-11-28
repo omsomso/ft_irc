@@ -46,19 +46,28 @@ void Client::clearCmdBuffer() {
 	this->_cmdBuffer = "";
 }
 
+void Client::sendChannelMembersToNewUser(Channel& joinedChannel) {
+	std::map<std::string, int> chUsers = joinedChannel.getChUsers();
+	for (std::map<std::string, int>::iterator it = chUsers.begin(); it != chUsers.end(); it++) {
+		if (it->first != _nickName) {
+			sendToClient(JOINEXISTINGUSERS);
+		}
+	}
+}
+
 void Client::joinChannel(Channel& channel) {
 	channel.getChUsers().insert(std::pair<std::string, int>(_nickName, _fd));
 	_channelsJoined.push_back(channel.getChannelName());
 	channel.incrementUserCount();
 	channel.sendToChannel(JOIN);
+	sendChannelMembersToNewUser(channel);
 	if (DEBUG) {
 		std::cout << "JOIN cmd msg :" << JOIN << std::endl;
 	}
 }
 
 void Client::quitChannel(Channel& channel) {
-	std::string msg = ":" + _nickName + " left the channel\n";
-	channel.sendToChannel(msg);
+	channel.sendToChannel(PART);
 	channel.decrementUserCount();
 	_channelsJoined.erase(std::remove(_channelsJoined.begin(), _channelsJoined.end(), channel.getChannelName()));
 	channel.getChUsers().erase(_nickName);

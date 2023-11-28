@@ -79,8 +79,8 @@ int Irc::monitor() {
 			}
 		}
 	}
-	sleep(1);
 	std::cout << "Shutting down server" << std::endl;
+	sleep(2);
 	disconnectAllClients();
 	close(_serverSocket);
 	return 0;
@@ -211,9 +211,9 @@ void Irc::sendToJoinedChannels(Client& client, std::string msg, std::string opt)
 	std::vector<std::string> channels = client.getChannelsJoined();
 	for (size_t i = 0; i < channels.size(); i++) {
 		if (opt == "QUIT")
-			_channels[channels[i]].sendToChannel(QUITMSG);
+			_channels[channels[i]].sendToChannelButUser(client.getFd(), QUITMSG);
 		if (opt == "NICK")
-			_channels[channels[i]].sendToChannel(NICKCHANNELNOTIF);
+			_channels[channels[i]].sendToChannelButUser(client.getFd(), NICKCHANNELNOTIF);
 	}
 }
 
