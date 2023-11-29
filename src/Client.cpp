@@ -1,6 +1,6 @@
 #include "../inc/Client.hpp"
 
-Client::Client() : _chName(""), _setupStatus(3), _op(false) {}
+Client::Client() : _setupStatus(3), _op(false) {}
 
 Client::~Client() {}
 
@@ -107,10 +107,6 @@ int Client::getSetupStatus() const {
 
 bool Client::getOpStatus() const {
 	return this->_op;
-}
-
-std::string Client::getChName() const {
-	return this->_chName;
 }
 
 std::vector<std::string> Client::getChannelsJoined() {

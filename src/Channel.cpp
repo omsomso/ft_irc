@@ -2,7 +2,7 @@
 
 Channel::Channel() {}
 
-Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topic), _inviteOnly(0), _topicRestricted(1), _keyProtected(0), _key(""), _userLimit(-1) {
+Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topic), _inviteOnly(0), _topicRestricted(1), _keyProtected(0), _key(""), _userLimit(-1), _userCount(0) {
 	std::cout << GREY "Created channel #" << name << " with topic \"" << topic << "\"" << END << std::endl;
 }
 

@@ -13,8 +13,6 @@
 #include <sstream>
 #include <stdlib.h>
 
-// #include "Irc.hpp"
-// #include "Client.hpp"
 #include "definitions.hpp"
 
 class Client;
@@ -64,7 +62,6 @@ class Channel {
 		void	sendToChannel(std::string msg);
 		void	sendToChannelButUser(int fdExcluded, std::string msg);
 		bool	isOnChannel(std::string nickName);
-
 };
 
 #endif

@@ -8,8 +8,6 @@ void Irc::IrcClientSetup::setupNewClients(Client& client, int fd) {
 	if (fd == _irc._serverSocket)
 		_irc.addClient();
 
-	// test client status : 3 = no pass, 2 = no nick, 1 = no userdata
-	// 0 = fully setup
 	else if (client.getSetupStatus() == PASS)
 		checkPass(client);
 	else if (client.getSetupStatus() == NICK)

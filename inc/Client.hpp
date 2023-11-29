@@ -21,7 +21,6 @@ class Client {
 		std::string _hostName;
 		std::string _serverName;
 		std::string _realName;
-		std::string	_chName;
 		int			_fd;
 		int			_setupStatus;
 		bool		_op;
@@ -49,8 +48,6 @@ class Client {
 		int			getFd() const;
 		int			getSetupStatus() const;
 		bool		getOpStatus() const;
-		std::string	getChName() const;
-		// Channel&	getChJoined() const;
 
 		std::vector<std::string>	getChannelsJoined();
 		bool	hasJoinedChannel(std::string channel);

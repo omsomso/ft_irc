@@ -337,7 +337,8 @@ void Irc::IrcCommands::nick(Client& client) {
 void Irc::IrcCommands::quit(Client& client) {
 	// Command: QUIT
 	// Parameters: [<reason>]
-	if (client.getChName() != "") {
+	if (_tokens.size() > 1) {
+
 		size_t len = (_input.find(':') + 1);
 		std::string msg = _input.substr(len, _input.length() - len);
 		
