@@ -267,12 +267,12 @@ void Irc::IrcCommands::part(Client& client) {
 		channel.erase(0, 1);
 
 	if (_irc.channelExists(channel) == false) {
-		client.sendToClient(ERR_NOTONCHANNEL);
+		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
 
 	if (client.hasJoinedChannel(channel) == false) {
-		client.sendToClient(ERR_USERNOTINCHANNEL);
+		client.sendToClient(ERR_NOTONCHANNEL);
 		return ;
 	}
 
@@ -289,6 +289,11 @@ void Irc::IrcCommands::nick(Client& client) {
 		client.sendToClient(ERR_NEEDMOREPARAMS);
 		return ;
 	}
+	
+	if (_tokens.size() > 2) {
+		client.sendToClient(ERR_NEEDMOREPARAMS);
+		return ;
+	}
 
 	std::string nick = _tokens[1];
 	if (nick.find(',') != std::string::npos) {
@@ -297,6 +302,11 @@ void Irc::IrcCommands::nick(Client& client) {
 	}
 
 	if (nick.find('#') == 0 || nick.find(':') == 0 || nick.empty()) {
+		client.sendToClient(ERR_ERRONEUSNICKNAME);
+		return ;
+	}
+
+	if (nick.find_first_of(",") != std::string::npos) {
 		client.sendToClient(ERR_ERRONEUSNICKNAME);
 		return ;
 	}
@@ -415,10 +425,14 @@ void Irc::IrcCommands::topic(Client& client) {
 		return ;
 	}
 
-	else {
-		targetChannel.setChannelTopic(_tokens[2]);
-		targetChannel.sendToChannel(RPL_TOPIC);
-	}
+	if (_tokens[2].empty())
+		return ;
+
+	size_t topicLen = _input.find(_tokens[2]) + _tokens[2].length();
+	std::string newTopic; 
+	newTopic = _input.substr(topicLen, _input.length() - topicLen);
+	targetChannel.setChannelTopic(_tokens[2]);
+	targetChannel.sendToChannel(RPL_TOPIC);
 }
 
 void Irc::IrcCommands::alreadyRegistered(Client& client) {
@@ -568,6 +582,10 @@ void Irc::IrcCommands::modeChannelKey(Client& client, Channel& targetChannel, bo
 			client.sendToClient(ERR_NEEDMOREPARAMS);
 			return ;
 		}
+		if (_tokens.size() > 4) {
+			client.sendToClient(ERR_INVALIDKEY);
+			return ;
+		}
 		size_t passBegin = _input.find(_tokens[3]);
 		std::string newKey = _input.substr(passBegin, _input.length() - passBegin);
 		if (DEBUG)
@@ -618,7 +636,7 @@ void Irc::IrcCommands::modeOpClient(Client& client, bool status) {
 		return ;
 	}
 	Client& targetClient = *_irc._clientsByNicks[nick];
-	if (status == true) {
+	if (status == true && targetClient.getOpStatus() == false) {
 		targetClient.setOpStatus(true);
 		targetClient.sendToClient(RPL_THEYREOPER);
 	}

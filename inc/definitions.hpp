@@ -78,7 +78,7 @@
 // ERR_BADCHANNELKEY (475)  "<client> <channel> :Cannot join channel (+k)"
 #define ERR_BADCHANNELKEY "475 " + CLIENT + " #" + channel + " :Cannot join channel (+k)\r\n"
 // ERR_INVALIDKEY (525) "<client> <target chan> :Key is not well-formed"
-#define ERR_INVALIDKEY "525 " + CLIENT + " #" + targetChannel + " :Key is not well-formed\r\n"
+#define ERR_INVALIDKEY "525 " + CLIENT + " #" + targetChannel.getChannelName() + " :Key is not well-formed\r\n"
 #define ERR_CHANNELLIMIT "471 " + CLIENT + " #" + channel + " :Channel has more members than its limit, aborting\r\n"
 
 

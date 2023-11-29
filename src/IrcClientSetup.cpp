@@ -15,7 +15,7 @@ void Irc::IrcClientSetup::setupNewClients(Client& client, int fd) {
 	else if (client.getSetupStatus() == NICK)
 		setupNick(client);
 	else if (client.getSetupStatus() == USER && SKIP_ID == true) {
-		client.setSetupStatus(USER);
+		client.setSetupStatus(REGISTERED);
 		printWelcome(client);
 	}
 	else if (client.getSetupStatus() == USER)
@@ -85,22 +85,34 @@ void Irc::IrcClientSetup::checkPass(Client& client) {
 
 int Irc::IrcClientSetup::parseNick(Client& client, std::string input) {
 	std::string cmdNick = input.substr(0, 5);
-	std::string nick = input.substr(5, input.length() - 5);
 
-	if (cmdNick != "NICK ") {
+	std::vector<std::string> tokens = _irc.tokenizeInput(input, ' ');
+
+	if (tokens.size() < 2) {
 		client.sendToClient(ERR_NONICKNAMEGIVEN);
 		return -1;
 	}
 
-	for (size_t i = 1; i < _irc._fds.size(); i++) {
-		if (_irc._clients[_irc._fds[i].fd].getNickName() == nick) {
-			client.sendToClient(ERR_NICKNAMEINUSE);
-			return -1;
-		}
+	if (tokens[0] != "NICK") {
+		client.sendToClient(ERR_CMD_NICK);
+		return -1;
 	}
 
-	if (input.find_first_of(",") != std::string::npos)
+	std::string nick = tokens[1];
+	if (tokens.size() > 2) {
 		client.sendToClient(ERR_ERRONEUSNICKNAME);
+		return -1;
+	}
+
+	if (_irc.clientExists(nick) == true) {
+		client.sendToClient(ERR_NICKNAMEINUSE);
+		return -1;
+	}
+
+	if (nick.find(",") != std::string::npos || nick.find('#') == 0 || nick.find(':') == 0) {
+		client.sendToClient(ERR_ERRONEUSNICKNAME);
+		return -1;
+	}
 
 	client.setNickName(nick);
 	if (SKIP_ID == false) {
