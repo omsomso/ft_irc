@@ -46,8 +46,8 @@ int Irc::setupServer() {
 }
 
 int Irc::monitor() {
+	signal(SIGINT, Irc::signalHandler);
 	std::cout << GREEN "Waiting for incoming connections" END << std::endl;
-
 	// main monitoring loop
 	while (quitFlag == 0) {
 		if (quitFlag)

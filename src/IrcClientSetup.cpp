@@ -3,7 +3,6 @@
 Irc::IrcClientSetup::IrcClientSetup(Irc &irc) : _irc(irc) {}
 
 void Irc::IrcClientSetup::setupNewClients(Client& client, int fd) {
-	signal(SIGINT, Irc::signalHandler);
 	// if a client tries to connect to port 6667 (establish first connection)
 	if (fd == _irc._serverSocket)
 		_irc.addClient();
