@@ -1,21 +1,35 @@
 #ifndef IRC_HPP
 #define IRC_HPP
 
+#include <fcntl.h>
+#include <pthread.h>
+
 #include <iostream>
+#include <sstream>
+#include <fstream>
+
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
+
 #include <unistd.h>
 #include <poll.h>
-#include <arpa/inet.h>
-#include <fcntl.h>
 #include <map>
 #include <vector>
-#include <sstream>
 #include <algorithm>
 
 #include "Channel.hpp"
 #include "Client.hpp"
 #include "definitions.hpp"
+
+
+struct FileTransferData {
+    std::string filename;
+    std::string peerIP;
+    int port;
+    long long fileSize;
+};
 
 enum setupStatus {
 	REGISTERED,
@@ -60,7 +74,7 @@ class Irc {
 				void	modeChannelLimit(Client& client, Channel& targetChannel, bool status);
 				void	modeOpClient(Client& client, bool status);
 				void	alreadyRegistered(Client& client);
-
+				void	handleDCC(const std::string& command, Client& client);
 		};
 
 		class IrcClientSetup {
