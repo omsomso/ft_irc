@@ -399,8 +399,7 @@ void Irc::IrcCommands::topic(Client& client) {
 	//	Parameters: <channel> [<topic>]
 	std::string cmd = "TOPIC";
 
-
-	if (_tokens.size() < 3) {
+	if (_tokens.size() < 2) {
 		client.sendToClient(ERR_NEEDMOREPARAMS);
 		return ;
 	}
@@ -421,6 +420,11 @@ void Irc::IrcCommands::topic(Client& client) {
 		return ;
 	}
 
+	if (_tokens.size() == 2) {
+		client.sendToClient(RPL_TOPIC);
+		return ;
+	}
+
 	if (targetChannel.getTopicRestricedStatus() == true && client.getOpStatus() != 1) {
 		client.sendToClient(ERR_NOPRIVILEGES);
 		return ;
@@ -429,10 +433,10 @@ void Irc::IrcCommands::topic(Client& client) {
 	if (_tokens[2].empty())
 		return ;
 
-	size_t topicLen = _input.find(_tokens[2]) + _tokens[2].length();
-	std::string newTopic; 
-	newTopic = _input.substr(topicLen, _input.length() - topicLen);
-	targetChannel.setChannelTopic(_tokens[2]);
+	size_t topicStart = (_input.find(_tokens[2]) + 1);
+	std::string newTopic;
+	newTopic = _input.substr(topicStart, _input.length() - topicStart);
+	targetChannel.setChannelTopic(newTopic);
 	targetChannel.sendToChannel(RPL_TOPIC);
 }
 
