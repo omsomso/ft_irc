@@ -1,4 +1,4 @@
-#include "../inc/Irc.hpp"
+#include "../inc/Server.hpp"
 
 // FILE TRANSFER STUFF
 // USE /DCC SEND <path/to/file> 127.0.0.1 1096 <filesize> <recipient_nick> to SEND
@@ -126,8 +126,8 @@ void* fileReceiveThread(void* arg) {
     return NULL;
 }
 
-void Irc::IrcCommands::handleDCC(const std::string& input, Client& client) {
-    std::vector<std::string> dcc_tokens = _irc.tokenizeInput(input, ' ');
+void Server::Commands::handleDCC(const std::string& input, Client& client) {
+    std::vector<std::string> dcc_tokens = _server.tokenizeInput(input, ' ');
 
     if (dcc_tokens.size() < 5 || dcc_tokens[0] != "DCC" || (dcc_tokens[1] != "SEND" && dcc_tokens[1] != "ACCEPT")) {
         client.sendToClient("Unknown or incomplete DCC command.\n");
@@ -148,12 +148,12 @@ void Irc::IrcCommands::handleDCC(const std::string& input, Client& client) {
 		
 		// Notify the recipient
         std::string recipient = dcc_tokens.size() > 6 ? dcc_tokens[6] : "";
-        if (!_irc.clientExists(recipient)) {
+        if (!_server.clientExists(recipient)) {
             client.sendToClient("Recipient not found.");
             return;
         }
 
-        Client& recipientClient = *_irc._clientsByNicks[recipient];
+        Client& recipientClient = *_server._clientsByNicks[recipient];
         std::string notification = "Client " + client.getNickName() + " wants to send you " + data->filename + " on " + data->peerIP + " port " + std::to_string(data->port) + "\n";
         recipientClient.sendToClient(notification);
 

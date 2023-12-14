@@ -1,5 +1,5 @@
-#ifndef IRC_HPP
-#define IRC_HPP
+#ifndef SERVER_HPP
+#define SERVER_HPP
 
 #include <fcntl.h>
 #include <pthread.h>
@@ -38,22 +38,22 @@ enum setupStatus {
 	PASS,
 };
 
-class Irc {
+class Server {
 	public:
-	Irc(int const port, std::string const pass, std::string const serverName);
-	int setupServer();
-	int monitor();
-	static bool	quitFlag;
+		Server(int const port, std::string const pass, std::string const serverName);
+		int setupServer();
+		int monitor();
+		static bool	quitFlag;
 
 	private:
-		class IrcCommands {
+		class Commands {
 			private:
-				Irc& _irc;
+				Server& _server;
 				std::string _input;
 				std::vector<std::string> _tokens;
 
 			public:
-				IrcCommands(Irc& irc);
+				Commands(Server& server);
 
 				void	handleClientCmd(Client& client, std::string input);
 				void	privmsg(Client& client);
@@ -75,14 +75,21 @@ class Irc {
 				void	modeOpClient(Client& client, bool status);
 				void	alreadyRegistered(Client& client);
 				void	handleDCC(const std::string& command, Client& client);
+
+				// Chatbot methods
+				std::string getBotMessage() const;
+				std::string handleChatBotRequest(const std::vector<std::string>& tokens, Client& client);
+				std::string serverInfo() const;
+				std::string channelInfo(const std::string& channelName) const;
+				std::string listAllChannels() const;
 		};
 
-		class IrcClientSetup {
+		class ClientSetup {
 			private:
-				Irc& _irc;
+				Server& _server;
 			
 			public:
-				IrcClientSetup(Irc& irc);
+				ClientSetup(Server& server);
 
 				void	setupNewClients(Client& client, int fd);
 				void	checkQuit(Client& client, std::string input);
@@ -106,8 +113,8 @@ class Irc {
 		std::string const	_pass;
 		std::string const	_serverName;
 
-		IrcCommands		_cmd;
-		IrcClientSetup	_setup;
+		Commands			_cmd;
+		ClientSetup			_setup;
 
 		int					_serverSocket;
 		struct sockaddr*	_serverAddress;

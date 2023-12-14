@@ -1,10 +1,10 @@
-#include "../inc/Irc.hpp"
+#include "../inc/Server.hpp"
 
-bool Irc::quitFlag = 0;
+bool Server::quitFlag = 0;
 
-Irc::Irc(int port, std::string const pass, std::string const serverName) : _port(port), _pass(pass), _serverName(serverName), _cmd(*this), _setup(*this) {}
+Server::Server(int port, std::string const pass, std::string const serverName) : _port(port), _pass(pass), _serverName(serverName), _cmd(*this), _setup(*this) {}
 
-int Irc::setupServer() {
+int Server::setupServer() {
 	// Set up server socket for clients to connect to on localhost:6667
 	_serverSocket = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -45,8 +45,8 @@ int Irc::setupServer() {
 	return 0;
 }
 
-int Irc::monitor() {
-	signal(SIGINT, Irc::signalHandler);
+int Server::monitor() {
+	signal(SIGINT, Server::signalHandler);
 	std::cout << GREEN "Waiting for incoming connections" END << std::endl;
 	// main monitoring loop
 	while (quitFlag == 0) {
@@ -86,7 +86,7 @@ int Irc::monitor() {
 	return 0;
 }
 
-int Irc::addClient() {
+int Server::addClient() {
 	// create new client Pollfd
 	struct pollfd clientPollfd;
 
@@ -115,7 +115,7 @@ int Irc::addClient() {
 	return 0;
 }
 
-void Irc::disconnectClient(Client& client) {
+void Server::disconnectClient(Client& client) {
 	int fd = client.getFd();
 	std::cout << "Disconnected client with fd " << fd << std::endl;
 	
@@ -142,7 +142,7 @@ void Irc::disconnectClient(Client& client) {
 	_clients.erase(fd);
 }
 
-int Irc::handleClient(Client& client) {
+int Server::handleClient(Client& client) {
 	std::string clientCmd;
 	std::string nick = client.getNickName();
 
@@ -169,12 +169,12 @@ int Irc::handleClient(Client& client) {
 	return 0;
 }
 
-void Irc::sendToAll(std::string msg) {
+void Server::sendToAll(std::string msg) {
 	for (size_t i = 1; i < _fds.size(); i++)
 		send(_fds[i].fd, &msg[0], strlen(&msg[0]), 0);
 }
 
-std::vector<std::string> Irc::tokenizeInput(std::string input, char sep) {
+std::vector<std::string> Server::tokenizeInput(std::string input, char sep) {
 	std::vector<std::string> tokens;
 	std::stringstream ss(input);
 	std::string token;
@@ -183,7 +183,7 @@ std::vector<std::string> Irc::tokenizeInput(std::string input, char sep) {
 	return tokens;
 }
 
-std::string	Irc::processInput(char buffer[], size_t len) {
+std::string	Server::processInput(char buffer[], size_t len) {
 	buffer[len] = 0x00;
 	std::string out = buffer;
 	size_t crnl = out.find_first_of("\r\n");
@@ -193,21 +193,21 @@ std::string	Irc::processInput(char buffer[], size_t len) {
 	return out;
 }
 
-bool Irc::channelExists(std::string channel) {
+bool Server::channelExists(std::string channel) {
 	if (_channels.find(channel) == _channels.end())
 		return false;
 	else
 		return true;
 }
 
-bool Irc::clientExists(std::string nick) {
+bool Server::clientExists(std::string nick) {
 	if (_clientsByNicks.find(nick) == _clientsByNicks.end())
 		return false;
 	else
 		return true;
 }
 
-void Irc::sendToJoinedChannels(Client& client, std::string msg, std::string opt) {
+void Server::sendToJoinedChannels(Client& client, std::string msg, std::string opt) {
 	std::vector<std::string> channels = client.getChannelsJoined();
 	for (size_t i = 0; i < channels.size(); i++) {
 		if (opt == "QUIT")
@@ -217,13 +217,13 @@ void Irc::sendToJoinedChannels(Client& client, std::string msg, std::string opt)
 	}
 }
 
-void	Irc::disconnectAllClients() {
+void	Server::disconnectAllClients() {
 	for (size_t i = 1; i < _fds.size(); i++) {
 			close(_fds[i].fd);
 	}
 }
 
-void Irc::signalHandler(int signal) {
+void Server::signalHandler(int signal) {
 	if (signal == SIGINT)
 		quitFlag = 1;
 }

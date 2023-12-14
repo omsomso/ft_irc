@@ -35,9 +35,9 @@ class Channel {
 		Channel(std::string name, std::string topic);
 		~Channel();
 
-		std::string getChannelName();
-		std::string getChannelTopic();
-		std::string	getNbUsers();
+		std::string getChannelName() const;
+		std::string getChannelTopic() const;
+		std::string	getNbUsers() const;
 		std::string	getChUserNamesStr();
 		bool		isInviteOnly();
 		bool		getTopicRestricedStatus();

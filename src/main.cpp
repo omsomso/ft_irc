@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../inc/Irc.hpp"
+#include "../inc/Server.hpp"
 
 int testPort(std::string port) {
 	if (!port.find_first_not_of("1234567890")) {
@@ -42,11 +42,11 @@ int main(int ac, char** av) {
 	if (testPass(pass))
 		return 0;
 
-	Irc irc(stoi(port), pass, "Super-Serveur");
+	Server server(stoi(port), pass, "Super-Serveur");
 	std::cout << "Starting server on port " << port << " with password " << pass << std::endl;
-	if (irc.setupServer())
+	if (server.setupServer())
 		return 0;
-	if (irc.monitor())
+	if (server.monitor())
 		return 0;
 	return 0;
 }
