@@ -77,11 +77,11 @@ class Server {
 				void	handleDCC(const std::string& command, Client& client);
 
 				// Chatbot methods
-				std::string getBotMessage() const;
+				std::string getBotMessage(Client& client) const;
 				std::string handleChatBotRequest(const std::vector<std::string>& tokens, Client& client);
-				std::string serverInfo() const;
-				std::string channelInfo(const std::string& channelName) const;
-				std::string listAllChannels() const;
+				std::string serverInfo(Client &client) const;
+				std::string channelInfo(const std::string& channelName, Client& client) const;
+				std::string listAllChannels(Client& client) const;
 		};
 
 		class ClientSetup {

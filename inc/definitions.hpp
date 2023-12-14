@@ -1,7 +1,7 @@
 #ifndef DEFINITIONS_HPP
 #define DEFINITIONS_HPP
 
-#define DEBUG false
+#define DEBUG true
 #define SKIP_ID false
 #define BUFFER_SIZE 1024
 
@@ -125,10 +125,13 @@
 #define GREEN "\033[0;32m"
 #define RED "\033[0;31m"
 #define BLUE "\033[0;34m"
+// #define BLUE "a"
 #define ORANGE "\033[33m"
 #define GREY "\033[90m"
 #define CYAN "\033[36m"
 #define YELLOW "\e[0;33m"
 #define END	"\033[0m"
+
+#define CBLUE "\012"
 
 #endif

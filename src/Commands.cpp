@@ -59,12 +59,14 @@ void Server::Commands::handleClientCmd(Client& client, std::string input) {
 
 	// Handle Direct Client-to-Client
 	else if (_tokens[0] == "CHATBOT") {
-        std::string chatBotResponse = handleChatBotRequest(_tokens, client);
-        client.sendToClient(chatBotResponse);
+        // std::string chatBotResponse = handleChatBotRequest(_tokens, client);
+		handleChatBotRequest(_tokens, client);
+		// std::cout << "chatbot response : " << chatBotResponse << std::endl;
+        // client.sendToClient(chatBotResponse);
     }
 
 	// Handle ChatBot
-	else if (_tokens[0] == "CHATBOT")
+	else if (_tokens[0] == "DCC")
 		handleDCC(input, client);
 
 	// MODE changes channel/user settings
@@ -87,7 +89,7 @@ void Server::Commands::triggerOp(Client &client) {
 void Server::Commands::privmsg(Client& client) {
 	std::string cmd = "PRIVMSG";
 
-	std::string msg = ":" + client.getNickName() + "!" + client.getUserName() + "@" + client.getHostName() + " :I";
+	std::string msg = ":" + client.getNickName() + "!" + client.getUserName() + "@" + client.getHostName() + " ";
 	msg += (_input + "\r\n");
 	
 	if (_tokens.size() < 2) {
