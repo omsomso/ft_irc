@@ -35,3 +35,6 @@
 ft_irc
 ircserv
 .vscode/settings.json
+
+
+received_files/*
