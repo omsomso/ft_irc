@@ -3,14 +3,14 @@
 std::string Server::Commands::getBotMessage() const {
     std::string Greeting = BLUE;
     Greeting.append("\n\n█████████████████████████████████████████████████\n");
-    Greeting.append("█     __ __ __  ____ ______ ____   ___  ______  █\n");  // Aligned
-    Greeting.append("█    /  ]  |  |/    |      |    \\ /   \\|      | █\n");  // Corrected with double backslashes
-    Greeting.append("█   /  /|  |  |  o  |      |  o  )     |      | █\n");  // Aligned
-    Greeting.append("█  /  / |  _  |     |_|  |_|     |  O  |_|  |_| █\n");  // Aligned
-    Greeting.append("█ /   \\_|  |  |  _  | |  | |  O  |     | |  |   █\n");  // Corrected with double backslashes
-    Greeting.append("█ \\     |  |  |  |  | |  | |     |     | |  |   █\n");  // Corrected with double backslashes
-    Greeting.append("█  \\____|__|__|__|__| |__| |_____|\\___/  |__|   █\n");  // Corrected with double backslashes
-    Greeting.append("█                                               █\n");  // Aligned
+    Greeting.append("█     __ __ __  ____ ______ ____   ___  ______  █\n");
+    Greeting.append("█    /  ]  |  |/    |      |    \\ /   \\|      | █\n");
+    Greeting.append("█   /  /|  |  |  o  |      |  o  )     |      | █\n");
+    Greeting.append("█  /  / |  _  |     |_|  |_|     |  O  |_|  |_| █\n");
+    Greeting.append("█ /   \\_|  |  |  _  | |  | |  O  |     | |  |   █\n");
+    Greeting.append("█ \\     |  |  |  |  | |  | |     |     | |  |   █\n");
+    Greeting.append("█  \\____|__|__|__|__| |__| |_____|\\___/  |__|   █\n");
+    Greeting.append("█                                               █\n");
     Greeting.append("█████████████████████████████████████████████████\n");
     Greeting.append(BLUE "█ Usage: CHATBOT [COMMAND_NUMBER]               █\n");
     Greeting.append(BLUE "█ Available Commands:                           █\n");
@@ -27,58 +27,60 @@ std::string Server::Commands::getBotMessage() const {
 
 
 std::string Server::Commands::handleChatBotRequest(const std::vector<std::string>& tokens, Client& client) {
-    if (tokens.empty()) {
+    if (tokens.empty())
         return getBotMessage();
-    }
 
     std::string response;
 
-    if (tokens.size() > 1) {
+    if (tokens.size() > 1)
+    {
         if (tokens[1] == "0") {
+            std::string opStatusStr = client.getOpStatus() ? "true" : "false";
             // Client details
             response = "Nickname: " + client.getNickName() + "\n" +
                        "Username: " + client.getUserName() + "\n" +
                        "Hostname: " + client.getHostName() + "\n" +
                        "Server Name: " + client.getServerName() + "\n" +
-                       "Real Name: " + client.getRealName() + "\n";
-        } else if (tokens[1] == "1") {
+                       "Real Name: " + client.getRealName() + "\n" +
+                        "Operator status: " + opStatusStr + "\n";
+        }
+        else if (tokens[1] == "1")
+        {
             // List joined channels
             std::vector<std::string> channelsJoined = client.getChannelsJoined();
             response = "Joined Channels: \n";
-            for (std::vector<std::string>::const_iterator it = channelsJoined.begin(); it != channelsJoined.end(); ++it) {
+            for (std::vector<std::string>::const_iterator it = channelsJoined.begin(); it != channelsJoined.end(); ++it)
                 response += *it + "\n";
-            }
-            if (channelsJoined.empty()) {
+            if (channelsJoined.empty())
                 response += "No joined channels.\n";
-            }
-        } else if (tokens[1] == "2") {
-            response = "Online Users: " + std::to_string(_server._clients.size()) + "\n"; 
-        } else if (tokens[1] == "3") {
-            response = listAllChannels();
-        } else if (tokens[1] == "4") {
-            if (tokens.size() == 3) {
-                response = channelInfo(tokens[2]);
-            } else {
-                response = "Usage: ChatBot 4 [CHANNEL NAME]\n";
-            }
-        } else if (tokens[1] == "5") {
-            response = serverInfo();
-        } else {
-            response = getBotMessage();
         }
-    } else {
-        response = getBotMessage();
+        else if (tokens[1] == "2")
+            response = "Online Users: " + std::to_string(_server._clients.size() - 1) + "\n"; 
+        else if (tokens[1] == "3")
+            response = listAllChannels();
+        else if (tokens[1] == "4")
+        {
+            if (tokens.size() == 3)
+                response = channelInfo(tokens[2]);
+            else
+                response = "Usage: ChatBot 4 [CHANNEL NAME]\n";
+        }
+        else if (tokens[1] == "5")
+            response = serverInfo();
+        else
+            response = getBotMessage();
     }
-
-    return response;
+    else
+        response = getBotMessage();
+    
+    return GREY + response + END;
 }
 
 
 std::string Server::Commands::serverInfo() const {
-    std::string serverInfo("Server Name: " + this->_server._serverName + "\n"); // Adjust _serverName based on actual attribute
-    serverInfo.append("Online Users: " + std::to_string(this->_server._clients.size()) + "\n"); // Assuming _clients map stores all connected clients
-    // serverInfo.append("Max Online Users: " + std::to_string(this->_maxOnlineCount) + "\n"); // Update if max online users count is tracked
-    serverInfo.append("Number of Channels: " + std::to_string(this->_server._channels.size()) + "\n"); // Update based on _channels map
+    std::string serverInfo("Server Name: " + this->_server._serverName + "\n");
+    serverInfo.append("Online Users: " + std::to_string(this->_server._clients.size()) + "\n");
+    serverInfo.append("Number of Channels: " + std::to_string(this->_server._channels.size()) + "\n");
     return serverInfo;
 }
 
@@ -90,7 +92,6 @@ std::string Server::Commands::channelInfo(const std::string& channelName) const 
         std::string channelInfo = "Channel Name: " + channel.getChannelName() + "\n";
         channelInfo += "Online Users: " + channel.getNbUsers() + "\n";
         channelInfo += "Channel Topic: " + channel.getChannelTopic() + "\n";
-        // Add more details as needed
         return channelInfo;
     }
     return "No channel named '" + channelName + "' found.\n";
@@ -98,14 +99,14 @@ std::string Server::Commands::channelInfo(const std::string& channelName) const 
 
 std::string fillIt(const std::string& text, size_t length) {
     if (text.length() >= length) {
-        return text.substr(0, length); // Cut the string if it's too long
+        return text.substr(0, length);
     }
-    return text + std::string(length - text.length(), ' '); // Pad with spaces
+    return text + std::string(length - text.length(), ' ');
 }
 
 std::string Server::Commands::listAllChannels() const {
     std::string channelList = YELLOW;
-    channelList.append("███████████████████████████████████████████\n");
+    channelList.append("\n███████████████████████████████████████████\n");
     channelList.append("█ Channel Name █ Online Users █   Topic   █\n");
     channelList.append("███████████████████████████████████████████\n");
     std::map<std::string, Channel>::const_iterator it;
@@ -114,6 +115,6 @@ std::string Server::Commands::listAllChannels() const {
         channelList.append(YELLOW "█" END + fillIt(it->second.getNbUsers(), 15));
         channelList.append(YELLOW "█" END + fillIt(it->second.getChannelTopic(), 11) + YELLOW "█\n");
     }
-    channelList.append(YELLOW "███████████████████████████████████████████\n" END);
+    channelList.append(YELLOW "███████████████████████████████████████████\n\n" END);
     return channelList;
 }
