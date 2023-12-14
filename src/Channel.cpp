@@ -8,11 +8,11 @@ Channel::Channel(std::string name, std::string topic) : _name(name), _topic(topi
 
 Channel::~Channel() {}
 
-std::string Channel::getChannelName() {
+std::string Channel::getChannelName() const {
 	return this->_name;
 }
 
-std::string Channel::getChannelTopic() {
+std::string Channel::getChannelTopic() const {
 	return this->_topic;
 }
 
@@ -25,7 +25,7 @@ std::string Channel::getChUserNamesStr() {
 	return userNames;
 }
 
-std::string Channel::getNbUsers() {
+std::string Channel::getNbUsers() const {
 	return (std::to_string(this->_users.size()));
 }
 

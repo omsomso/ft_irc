@@ -1,13 +1,13 @@
-#include "../inc/Irc.hpp"
+#include "../inc/Server.hpp"
 
-Irc::IrcCommands::IrcCommands(Irc& irc) : _irc(irc) {}
+Server::Commands::Commands(Server& server) : _server(server) {}
 
-void Irc::IrcCommands::handleClientCmd(Client& client, std::string input) {
+void Server::Commands::handleClientCmd(Client& client, std::string input) {
 	if (input.empty())
 		return ;
 
 	_input = input;
-	this->_tokens = _irc.tokenizeInput(input, ' ');
+	this->_tokens = _server.tokenizeInput(input, ' ');
 
 	// Commands that can't be reused
 	if (_tokens[0] == "PASS" || _tokens[0] == "USER")
@@ -58,7 +58,13 @@ void Irc::IrcCommands::handleClientCmd(Client& client, std::string input) {
 		triggerOp(client);
 
 	// Handle Direct Client-to-Client
-	else if (_tokens[0] == "DCC")
+	else if (_tokens[0] == "CHATBOT") {
+        std::string chatBotResponse = handleChatBotRequest(_tokens, client);
+        client.sendToClient(chatBotResponse);
+    }
+
+	// Handle ChatBot
+	else if (_tokens[0] == "CHATBOT")
 		handleDCC(input, client);
 
 	// MODE changes channel/user settings
@@ -69,7 +75,7 @@ void Irc::IrcCommands::handleClientCmd(Client& client, std::string input) {
 	return ;
 }
 
-void Irc::IrcCommands::triggerOp(Client &client) {
+void Server::Commands::triggerOp(Client &client) {
 	if (client.getOpStatus() == false) {
 		client.setOpStatus(true);
 		client.sendToClient(RPL_YOUREOPER);
@@ -78,7 +84,7 @@ void Irc::IrcCommands::triggerOp(Client &client) {
 		client.setOpStatus(false);
 }
 
-void Irc::IrcCommands::privmsg(Client& client) {
+void Server::Commands::privmsg(Client& client) {
 	std::string cmd = "PRIVMSG";
 
 	std::string msg = ":" + client.getNickName() + "!" + client.getUserName() + "@" + client.getHostName() + " :I";
@@ -99,7 +105,7 @@ void Irc::IrcCommands::privmsg(Client& client) {
 		msgUser(client, msg);
 }
 
-void Irc::IrcCommands::msgChannel(Client &client, std::string msg) {
+void Server::Commands::msgChannel(Client &client, std::string msg) {
 	std::string channel = _tokens[1];
 	if (_tokens[1].find('#') == 0)
 		channel.erase(0, 1);
@@ -107,12 +113,12 @@ void Irc::IrcCommands::msgChannel(Client &client, std::string msg) {
 	if (DEBUG)
 		std::cout << "PRIVMSG parsed #channel :" << channel << std::endl;
 
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
 		
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 
 	if (client.hasJoinedChannel(channel) == false) {
 		client.sendToClient(ERR_NOTONCHANNEL);
@@ -127,12 +133,12 @@ void Irc::IrcCommands::msgChannel(Client &client, std::string msg) {
 	}
 }
 
-void Irc::IrcCommands::msgUser(Client &client, std::string msg) {
+void Server::Commands::msgUser(Client &client, std::string msg) {
 	std::string nick = _tokens[1];
 	if (DEBUG)
 		std::cout << "PRIVMSG parsed user :" << nick << std::endl;
 
-	if (_irc.clientExists(nick) == false) {
+	if (_server.clientExists(nick) == false) {
 		client.sendToClient(ERR_NOSUCHNICK);
 		return ;
 	}
@@ -143,17 +149,17 @@ void Irc::IrcCommands::msgUser(Client &client, std::string msg) {
 			std::cout << "PRIVMSG msg :" << msg << std::endl;
 		}
 
-		Client targetClient = *_irc._clientsByNicks[nick];
+		Client targetClient = *_server._clientsByNicks[nick];
 
 		targetClient.sendToClient(msg);
 	}
 }
 
 
-void Irc::IrcCommands::list(Client& client) {
+void Server::Commands::list(Client& client) {
 	std::string msg = RPL_LIST;
 
-	for (std::map<std::string, Channel>::iterator it = _irc._channels.begin(); it != _irc._channels.end(); it++) {
+	for (std::map<std::string, Channel>::iterator it = _server._channels.begin(); it != _server._channels.end(); it++) {
 		msg += (it->first + " " + it->second.getNbUsers() + " :" + it->second.getChannelTopic());
 		msg += "\r\n";
 		if (DEBUG)
@@ -165,7 +171,7 @@ void Irc::IrcCommands::list(Client& client) {
 	return ;
 }
 
-void Irc::IrcCommands::join(Client& client) {
+void Server::Commands::join(Client& client) {
 	// Command: JOIN
 	// Parameters: <channel>{,<channel>} [<key>{,<key>}]
 	std::string cmd = "JOIN";
@@ -180,7 +186,7 @@ void Irc::IrcCommands::join(Client& client) {
 	if (_tokens[1].find('#') == 0)
 		channel.erase(0, 1);
 	
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
@@ -190,7 +196,7 @@ void Irc::IrcCommands::join(Client& client) {
 		return ;
 	}
 
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 	if (targetChannel.isInviteOnly() == true) {
 		client.sendToClient(ERR_INVITEONLYCHAN);
 		return ;
@@ -226,7 +232,7 @@ void Irc::IrcCommands::join(Client& client) {
 	}
 }
 
-void Irc::IrcCommands::names(Client& client) {
+void Server::Commands::names(Client& client) {
 	std::string cmd = "NAMES";
 	std::string nick = client.getNickName();
 
@@ -239,7 +245,7 @@ void Irc::IrcCommands::names(Client& client) {
 	if (_tokens[1].find('#') == 0)
 		channel.erase(0, 1);
 
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
@@ -249,13 +255,13 @@ void Irc::IrcCommands::names(Client& client) {
 		return ;
 	}
 
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 
 	client.sendToClient(RPL_NAMREPLY);
 	client.sendToClient(RPL_ENDOFNAMES);
 }
 
-void Irc::IrcCommands::part(Client& client) {
+void Server::Commands::part(Client& client) {
 	// Command: PART
 	// Parameters: <channel>{,<channel>} [<reason>]
 	std::string cmd = "PART";
@@ -270,7 +276,7 @@ void Irc::IrcCommands::part(Client& client) {
 	if (_tokens[1].find('#') == 0)
 		channel.erase(0, 1);
 
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
@@ -280,11 +286,11 @@ void Irc::IrcCommands::part(Client& client) {
 		return ;
 	}
 
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 	client.quitChannel(targetChannel);
 }
 
-void Irc::IrcCommands::nick(Client& client) {
+void Server::Commands::nick(Client& client) {
 	// Command: NICK
 	// Parameters: <nickname>
 	std::string cmd = "NICK";
@@ -315,30 +321,30 @@ void Irc::IrcCommands::nick(Client& client) {
 		return ;
 	}
 
-	if (_irc.clientExists(nick) == true) {
+	if (_server.clientExists(nick) == true) {
 		client.sendToClient(ERR_NICKNAMEINUSE);
 		return ;
 	}
 
 	// change nick in _clientsByNicks
-	std::map<std::string, Client*>::iterator it = _irc._clientsByNicks.find(client.getNickName());
+	std::map<std::string, Client*>::iterator it = _server._clientsByNicks.find(client.getNickName());
 	Client* tmpclient = it->second;
-	_irc._clientsByNicks.erase(it);
-	_irc._clientsByNicks.insert(std::pair<std::string, Client*>(nick, tmpclient));
+	_server._clientsByNicks.erase(it);
+	_server._clientsByNicks.insert(std::pair<std::string, Client*>(nick, tmpclient));
 
 	// change nick in every joined channel
-	for (std::map<std::string, Channel>::iterator ct = _irc._channels.begin(); ct != _irc._channels.end(); ct++) {
+	for (std::map<std::string, Channel>::iterator ct = _server._channels.begin(); ct != _server._channels.end(); ct++) {
 		if (client.hasJoinedChannel(ct->first)) {
 			ct->second.changeNickName(client.getNickName(), nick);
 		}
 	}
 
-	_irc.sendToJoinedChannels(client, nick , "NICK");
+	_server.sendToJoinedChannels(client, nick , "NICK");
 	client.sendToClient(NICKCHANGESUCCESS);
 	client.setNickName(nick);
 }
 
-void Irc::IrcCommands::quit(Client& client) {
+void Server::Commands::quit(Client& client) {
 	// Command: QUIT
 	// Parameters: [<reason>]
 	if (_tokens.size() > 1) {
@@ -349,12 +355,12 @@ void Irc::IrcCommands::quit(Client& client) {
 		if (DEBUG)
 			std::cout << "QUIT cmd msg :" << msg << std::endl;
 
-		_irc.sendToJoinedChannels(client, msg, "QUIT");
+		_server.sendToJoinedChannels(client, msg, "QUIT");
 	}
-	_irc.disconnectClient(client);
+	_server.disconnectClient(client);
 }
 
-void Irc::IrcCommands::kick(Client& client) {
+void Server::Commands::kick(Client& client) {
 	// Command: KICK
 	// Parameters: <channel> <user> *( "," <user> ) [<comment>]
 	std::string cmd = "KICK";
@@ -380,13 +386,13 @@ void Irc::IrcCommands::kick(Client& client) {
 
 	std::string nick = _tokens[2];
 
-	if (_irc.clientExists(nick) == false) {
+	if (_server.clientExists(nick) == false) {
 		client.sendToClient(ERR_NOSUCHNICK);
 		return ;
 	}
 
-	Client& targetClient = *_irc._clientsByNicks[nick];
-	Channel& targetChannel = _irc._channels[channel];
+	Client& targetClient = *_server._clientsByNicks[nick];
+	Channel& targetChannel = _server._channels[channel];
 
 	if (DEBUG)
 		std::cout << "KICK target channel name :" << targetChannel.getChannelName() << std::endl << "KICK target nick :" << targetClient.getNickName() << std::endl;
@@ -398,7 +404,7 @@ void Irc::IrcCommands::kick(Client& client) {
 	targetClient.sendToClient(YOUWEREKICKED);
 }
 
-void Irc::IrcCommands::topic(Client& client) {
+void Server::Commands::topic(Client& client) {
 	//	Command: TOPIC
 	//	Parameters: <channel> [<topic>]
 	std::string cmd = "TOPIC";
@@ -412,12 +418,12 @@ void Irc::IrcCommands::topic(Client& client) {
 	if (channel.find('#') == 0)
 		channel.erase(0, 1);
 
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
 	
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 
 	if (client.hasJoinedChannel(channel) == false) {
 		client.sendToClient(ERR_NOTONCHANNEL);
@@ -444,11 +450,11 @@ void Irc::IrcCommands::topic(Client& client) {
 	targetChannel.sendToChannel(RPL_TOPIC);
 }
 
-void Irc::IrcCommands::alreadyRegistered(Client& client) {
+void Server::Commands::alreadyRegistered(Client& client) {
 	client.sendToClient(ERR_ALREADYREGISTERED);
 }
 
-void Irc::IrcCommands::invite(Client &client) {
+void Server::Commands::invite(Client &client) {
 	// Command: INVITE
 	// Parameters: <nickname> <channel>
 	std::string cmd = "INVITE";
@@ -468,12 +474,12 @@ void Irc::IrcCommands::invite(Client &client) {
 	if (channel.find('#') == 0)
 		channel.erase(0, 1);
 
-	if (_irc.clientExists(nick) == false) {
+	if (_server.clientExists(nick) == false) {
 		client.sendToClient(ERR_NOSUCHNICK);
 		return ;
 	}
 	
-	if (_irc.channelExists(channel) == false) {
+	if (_server.channelExists(channel) == false) {
 		client.sendToClient(ERR_NOSUCHCHANNEL);
 		return ;
 	}
@@ -482,7 +488,7 @@ void Irc::IrcCommands::invite(Client &client) {
 		client.sendToClient(ERR_NOTONCHANNEL);
 		return ;
 	}
-	Channel& targetChannel = _irc._channels[channel];
+	Channel& targetChannel = _server._channels[channel];
 
 	if (targetChannel.isOnChannel(nick) == true) {
 		client.sendToClient(ERR_USERONCHANNEL);	
@@ -495,7 +501,7 @@ void Irc::IrcCommands::invite(Client &client) {
 	}
 
 	else {
-		Client& targetClient = *_irc._clientsByNicks[nick];
+		Client& targetClient = *_server._clientsByNicks[nick];
 		targetClient.sendToClient(RPL_INVITING);
 		targetClient.joinChannel(targetChannel);
 		targetClient.sendToClient(RPL_TOPIC);
@@ -504,7 +510,7 @@ void Irc::IrcCommands::invite(Client &client) {
 	}
 }
 
-void Irc::IrcCommands::mode(Client& client) {
+void Server::Commands::mode(Client& client) {
 	// Command: MODE
 	// Parameters: <target> [<modestring> [<mode arguments>...]]
 	std::string cmd = "MODE";
@@ -542,7 +548,7 @@ void Irc::IrcCommands::mode(Client& client) {
 		targetIsChannel = false;
 
 	if (targetIsChannel == true) {
-		if (_irc.channelExists(channel) == false) {
+		if (_server.channelExists(channel) == false) {
 				client.sendToClient(ERR_NOSUCHCHANNEL);
 				return ;
 			}
@@ -552,11 +558,11 @@ void Irc::IrcCommands::mode(Client& client) {
 			}
 	}
 	if (targetIsChannel == false) {
-		if (_irc.clientExists(nick) == false) {
+		if (_server.clientExists(nick) == false) {
 			client.sendToClient(ERR_NOSUCHNICK);
 			return ;
 		}
-		Client& targetClient = *_irc._clientsByNicks[nick];
+		Client& targetClient = *_server._clientsByNicks[nick];
 		if (client.sharesAChannelWith(targetClient) == false) {
 			client.sendToClient(ERR_NORECIPIENT);
 			return ;
@@ -568,22 +574,22 @@ void Irc::IrcCommands::mode(Client& client) {
 		status = true;
 	// i: Set/remove Invite-only channel
 	if (modestring[1] == 'i')
-		_irc._channels[channel].setInviteStatus(status);
+		_server._channels[channel].setInviteStatus(status);
 	// t: Set/remove the restrictions of the TOPIC command to channel operators
 	if (modestring[1] == 't')
-		_irc._channels[channel].setTopicRestrictedStatus(status);
+		_server._channels[channel].setTopicRestrictedStatus(status);
 	// k: Set/remove the channel key (password)
 	if (modestring[1] == 'k')
-		modeChannelKey(client, _irc._channels[channel], status);
+		modeChannelKey(client, _server._channels[channel], status);
 	// l: Set/remove the user limit to channel
 	if (modestring[1] == 'l')
-		modeChannelLimit(client, _irc._channels[channel], status);
+		modeChannelLimit(client, _server._channels[channel], status);
 	// o: Give/take channel operator privilege
 	if (modestring[1] == 'o')
 		modeOpClient(client, status);
 }
 
-void Irc::IrcCommands::modeChannelKey(Client& client, Channel& targetChannel, bool status) {
+void Server::Commands::modeChannelKey(Client& client, Channel& targetChannel, bool status) {
 	std::string cmd = "MODE";
 
 	if (status == true) {
@@ -607,7 +613,7 @@ void Irc::IrcCommands::modeChannelKey(Client& client, Channel& targetChannel, bo
 	}
 }
 
-void Irc::IrcCommands::modeChannelLimit(Client& client, Channel& targetChannel, bool status) {
+void Server::Commands::modeChannelLimit(Client& client, Channel& targetChannel, bool status) {
 	std::string cmd = "MODE";
 	std::string channel = targetChannel.getChannelName();
 	std::string value = _tokens[3];
@@ -638,13 +644,13 @@ void Irc::IrcCommands::modeChannelLimit(Client& client, Channel& targetChannel, 
 	}
 }
 
-void Irc::IrcCommands::modeOpClient(Client& client, bool status) {
+void Server::Commands::modeOpClient(Client& client, bool status) {
 	std::string nick = _tokens[1];
 	if (nick == client.getNickName()) {
 		client.sendToClient(ERR_ERRONEUSNICKNAME);
 		return ;
 	}
-	Client& targetClient = *_irc._clientsByNicks[nick];
+	Client& targetClient = *_server._clientsByNicks[nick];
 	if (status == true && targetClient.getOpStatus() == false) {
 		targetClient.setOpStatus(true);
 		targetClient.sendToClient(RPL_THEYREOPER);
