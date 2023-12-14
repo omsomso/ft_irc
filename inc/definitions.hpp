@@ -16,9 +16,9 @@
 // SETUP & GREETINGS
 #define ERR_PASSWDMISMATCH "464 Wrong password, try again!\r\n"
 // RPL_WELCOME 001 <client> :Welcome to the <networkname> Network, <nick>[!<user>@<host>]"
-#define RPL_WELCOME "001 " + CLIENT + " :Welcome to " + _irc._serverName + " " + CLIENT + ". You're all set, you can now use LIST to list channels and JOIN <channel> to join a channel :)\r\n"
+#define RPL_WELCOME "001 " + CLIENT + " :Welcome to " + _server._serverName + " " + CLIENT + ". You're all set, you can now use LIST to list channels and JOIN <channel> to join a channel :)\r\n"
 //   RPL_YOURHOST 002 <client> :Your host is <servername>, running version <version>"
-#define RPL_YOURHOST "002 " + CLIENT + " :Your host is " + _irc._serverName + "\r\n"
+#define RPL_YOURHOST "002 " + CLIENT + " :Your host is " + _server._serverName + "\r\n"
 //   RPL_CREATED 003 <client> :This server was created <datetime>"
 #define RPL_CREATED "003 " + CLIENT + " :This server was created today\r\n"
 
@@ -127,6 +127,8 @@
 #define BLUE "\033[0;34m"
 #define ORANGE "\033[33m"
 #define GREY "\033[90m"
+#define CYAN "\033[36m"
+#define YELLOW "\e[0;33m"
 #define END	"\033[0m"
 
 #endif
