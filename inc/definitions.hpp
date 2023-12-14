@@ -1,7 +1,7 @@
 #ifndef DEFINITIONS_HPP
 #define DEFINITIONS_HPP
 
-#define DEBUG true
+#define DEBUG false
 #define SKIP_ID false
 #define BUFFER_SIZE 1024
 
