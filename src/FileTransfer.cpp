@@ -104,7 +104,6 @@ void* fileReceiveThread(void* arg) {
 
     // Ensure the 'received_files' directory exists
     system("mkdir -p received_files");
-
     std::ofstream fileStream(newFilePath.c_str(), std::ofstream::binary);
     if (!fileStream) {
         std::cerr << "File open failed: " << newFilePath << std::endl;

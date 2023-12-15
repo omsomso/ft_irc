@@ -167,7 +167,7 @@ std::string Server::Commands::listAllChannels(Client& client) const {
 	std::map<std::string, Channel>::const_iterator it;
 	for (it = this->_server._channels.begin(); it != this->_server._channels.end(); ++it) {
 		channelList = "";
-		channelList.append( "█"  + fillIt(it->first, 13));
+		channelList.append( "█"  + fillIt(it->first, 14));
 		channelList.append( "█"  + fillIt(it->second.getNbUsers(), 15));
 		channelList.append( "█"  + fillIt(it->second.getChannelTopic(), 11) +  "█\n");
 		client.sendToClient(form + channelList);
